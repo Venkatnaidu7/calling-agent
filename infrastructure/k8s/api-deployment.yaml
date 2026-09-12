@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-deployment
+  namespace: aicalling-prod
+  labels:
+    app: aicalling-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: aicalling-api
+  template:
+    metadata:
+      labels:
+        app: aicalling-api
+    spec:
+      containers:
+        - name: api
+          image: aicalling/api:latest
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: aicalling-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aicalling-secrets
+                  key: database_url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aicalling-secrets
+                  key: redis_url
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aicalling-secrets
+                  key: openai_api_key
+            - name: TWILIO_ACCOUNT_SID
+              valueFrom:
+                secretKeyRef:
+                  name: aicalling-secrets
+                  key: twilio_account_sid
+            - name: TWILIO_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: aicalling-secrets
+                  key: twilio_auth_token
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aicalling-secrets
+                  key: stripe_secret_key
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1536Mi
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health/liveness
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/readiness
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+  namespace: aicalling-prod
+spec:
+  type: ClusterIP
+  selector:
+    app: aicalling-api
+  ports:
+    - port: 8000
+      targetPort: 8000

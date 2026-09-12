@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  namespace: aicalling-prod
+  labels:
+    app: aicalling-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aicalling-web
+  template:
+    metadata:
+      labels:
+        app: aicalling-web
+    spec:
+      containers:
+        - name: web
+          image: aicalling/web:latest
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NEXT_PUBLIC_API_URL
+              value: "https://api.aicalling.com"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+  namespace: aicalling-prod
+spec:
+  type: ClusterIP
+  selector:
+    app: aicalling-web
+  ports:
+    - port: 3000
+      targetPort: 3000
