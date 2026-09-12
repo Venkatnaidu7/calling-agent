@@ -1,10 +1,9 @@
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PATH="/home/aicalling/.local/bin:${PATH}"
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -13,10 +12,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-RUN useradd -m -s /bin/bash aicalling
-USER aicalling
+COPY . .
 
-COPY --chown=aicalling:aicalling . .
-RUN pip install --user build && pip install --user .
+RUN pip install --no-cache-dir .
+
+RUN useradd -m -s /bin/bash aicalling && \
+    chown -R aicalling:aicalling /app
+
+USER aicalling
 
 CMD ["python", "-m", "celery", "-A", "apps.api.worker.celery_app", "worker", "--loglevel=info"]
