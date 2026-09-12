@@ -1,25 +1,25 @@
 import secrets
-import structlog
+from datetime import datetime, timedelta, timezone
+from typing import Dict, Optional
 from uuid import UUID
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any
+
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status
+import structlog
 import stripe
 
 from apps.api.config import settings
-from apps.api.models.billing import Subscription, UsageRecord
-from apps.api.models.tenant import Tenant
-from apps.api.schemas.billing import (
-    SubscriptionResponse,
-    CreateCheckoutSessionRequest,
-    CheckoutSessionResponse,
-    CustomerPortalResponse,
-    UsageSummaryResponse,
-    PlanTier,
-)
+from apps.api.models.billing import UsageRecord
 from apps.api.repositories.billing_repo import SubscriptionRepository, UsageRecordRepository
 from apps.api.repositories.tenant_repo import TenantRepository
+from apps.api.schemas.billing import (
+    CheckoutSessionResponse,
+    CreateCheckoutSessionRequest,
+    CustomerPortalResponse,
+    PlanTier,
+    SubscriptionResponse,
+    UsageSummaryResponse,
+)
 
 logger = structlog.get_logger()
 
@@ -30,7 +30,12 @@ PLANS: Dict[str, PlanTier] = {
         price_monthly_dollars=49,
         monthly_minutes=300,
         concurrency_limit=2,
-        features=["1 Phone Number", "300 Included Voice Minutes", "OpenAI Realtime Voice", "Basic Analytics"],
+        features=[
+            "1 Phone Number",
+            "300 Included Voice Minutes",
+            "OpenAI Realtime Voice",
+            "Basic Analytics",
+        ],
     ),
     "pro": PlanTier(
         id="pro",
@@ -38,7 +43,13 @@ PLANS: Dict[str, PlanTier] = {
         price_monthly_dollars=199,
         monthly_minutes=1500,
         concurrency_limit=5,
-        features=["5 Phone Numbers", "1500 Included Voice Minutes", "Knowledge Base RAG", "Custom Integrations", "Full Analytics"],
+        features=[
+            "5 Phone Numbers",
+            "1500 Included Voice Minutes",
+            "Knowledge Base RAG",
+            "Custom Integrations",
+            "Full Analytics",
+        ],
     ),
     "enterprise": PlanTier(
         id="enterprise",
@@ -46,7 +57,13 @@ PLANS: Dict[str, PlanTier] = {
         price_monthly_dollars=599,
         monthly_minutes=5000,
         concurrency_limit=20,
-        features=["Unlimited Phone Numbers", "5000 Included Voice Minutes", "Dedicated Account Manager", "Custom LLM Fine-tuning", "SLA 99.9%"],
+        features=[
+            "Unlimited Phone Numbers",
+            "5000 Included Voice Minutes",
+            "Dedicated Account Manager",
+            "Custom LLM Fine-tuning",
+            "SLA 99.9%",
+        ],
     ),
 }
 
@@ -86,7 +103,9 @@ class BillingService:
         resp.minutes_used_this_period = minutes_used
         return resp
 
-    async def create_checkout_session(self, data: CreateCheckoutSessionRequest) -> CheckoutSessionResponse:
+    async def create_checkout_session(
+        self, data: CreateCheckoutSessionRequest
+    ) -> CheckoutSessionResponse:
         plan = PLANS.get(data.plan_tier)
         if not plan:
             raise HTTPException(status_code=400, detail="Invalid plan tier")
@@ -137,7 +156,7 @@ class BillingService:
             return CheckoutSessionResponse(checkout_url=checkout.url, session_id=checkout.id)
         except Exception as e:
             logger.error("stripe_checkout_error", error=str(e))
-            raise HTTPException(status_code=500, detail=f"Stripe error: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Stripe error: {str(e)}") from e
 
     async def create_customer_portal(self, return_url: str) -> CustomerPortalResponse:
         sub = await self.sub_repo.get_by_tenant(self.tenant_id)
@@ -155,7 +174,7 @@ class BillingService:
             return CustomerPortalResponse(portal_url=portal.url)
         except Exception as e:
             logger.error("stripe_portal_error", error=str(e))
-            raise HTTPException(status_code=500, detail=f"Stripe portal error: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Stripe portal error: {str(e)}") from e
 
     async def check_usage_limit(self) -> bool:
         """Check if the tenant has exceeded their monthly voice minute limit."""
@@ -170,10 +189,23 @@ class BillingService:
         minutes_used, _, _ = await self.usage_repo.get_usage_for_period(self.tenant_id, start, end)
 
         if minutes_used >= sub.monthly_minute_limit:
-            logger.warning("usage_limit_exceeded", tenant_id=self.tenant_id, used=minutes_used, limit=sub.monthly_minute_limit)
+            logger.warning(
+                "usage_limit_exceeded",
+                tenant_id=self.tenant_id,
+                used=minutes_used,
+                limit=sub.monthly_minute_limit,
+            )
             return True
 
         return False
+
+    async def record_usage(
+        self,
+        metric: str,
+        quantity: int,
+        call_id: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ) -> UsageRecord:
         rate_cents = 5  # default 5 cents per minute
         total_cents = rate_cents * quantity if metric == "voice_minutes" else 0
 
@@ -192,10 +224,16 @@ class BillingService:
     async def get_usage_summary(self) -> UsageSummaryResponse:
         sub = await self.sub_repo.get_by_tenant(self.tenant_id)
         now = datetime.now(timezone.utc)
-        start = sub.current_period_start if sub and sub.current_period_start else now - timedelta(days=30)
+        start = (
+            sub.current_period_start
+            if sub and sub.current_period_start
+            else now - timedelta(days=30)
+        )
         end = sub.current_period_end if sub and sub.current_period_end else now + timedelta(days=30)
 
-        total_min, total_cost, breakdown = await self.usage_repo.get_usage_for_period(self.tenant_id, start, end)
+        total_min, total_cost, breakdown = await self.usage_repo.get_usage_for_period(
+            self.tenant_id, start, end
+        )
 
         return UsageSummaryResponse(
             tenant_id=self.tenant_id,

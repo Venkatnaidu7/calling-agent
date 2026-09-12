@@ -3,7 +3,6 @@ import time
 import uuid
 import structlog
 from typing import Any
-from pydantic import ValidationError
 
 from apps.api.tools.registry import ToolRegistry
 
@@ -11,7 +10,9 @@ logger = structlog.get_logger()
 
 
 class ToolExecutionResult:
-    def __init__(self, success: bool, data: dict[str, Any] = None, error: str = None, error_code: str = None):
+    def __init__(
+        self, success: bool, data: dict[str, Any] = None, error: str = None, error_code: str = None
+    ):
         self.success = success
         self.data = data or {}
         self.error = error
@@ -20,7 +21,13 @@ class ToolExecutionResult:
     def to_json(self) -> str:
         if self.success:
             return json.dumps({"success": True, **self.data})
-        return json.dumps({"success": False, "error_code": self.error_code or "TOOL_ERROR", "error": self.error or "Tool execution failed"})
+        return json.dumps(
+            {
+                "success": False,
+                "error_code": self.error_code or "TOOL_ERROR",
+                "error": self.error or "Tool execution failed",
+            }
+        )
 
 
 class ToolExecutor:
@@ -61,7 +68,7 @@ class ToolExecutor:
     ) -> ToolExecutionResult:
         execution_id = str(uuid.uuid4())
         start_time = time.time()
-        
+
         log_entry = {
             "execution_id": execution_id,
             "tool_name": tool_name,
@@ -69,25 +76,35 @@ class ToolExecutor:
             "tenant_id": self.tenant_id,
             "timestamp": start_time,
         }
-        
+
         try:
             # Step 1: Check tool exists
             tool = ToolRegistry.get(tool_name)
             if not tool:
                 logger.warning("tool_not_found", tool=tool_name)
-                return ToolExecutionResult(success=False, error=f"Tool '{tool_name}' not found", error_code="TOOL_NOT_FOUND")
-            
+                return ToolExecutionResult(
+                    success=False,
+                    error=f"Tool '{tool_name}' not found",
+                    error_code="TOOL_NOT_FOUND",
+                )
+
             # Step 2: Check permission
             if not self.tool_permissions.get(tool_name, False):
                 logger.warning("tool_permission_denied", tool=tool_name, agent_id=self.agent_id)
-                return ToolExecutionResult(success=False, error=f"Permission denied for tool '{tool_name}'", error_code="PERMISSION_DENIED")
-            
+                return ToolExecutionResult(
+                    success=False,
+                    error=f"Permission denied for tool '{tool_name}'",
+                    error_code="PERMISSION_DENIED",
+                )
+
             # Step 3: Parse arguments
             try:
                 parsed_args = json.loads(arguments) if arguments else {}
             except json.JSONDecodeError:
-                return ToolExecutionResult(success=False, error="Invalid tool arguments", error_code="INVALID_ARGUMENTS")
-            
+                return ToolExecutionResult(
+                    success=False, error="Invalid tool arguments", error_code="INVALID_ARGUMENTS"
+                )
+
             # Step 4: Inject context
             parsed_args["_context"] = {
                 "tenant_id": self.tenant_id,
@@ -97,29 +114,29 @@ class ToolExecutor:
                 "to_number": self.to_number,
                 "from_number": self.from_number,
             }
-            
+
             # Step 5: Execute
             logger.info("tool_executing", tool=tool_name, execution_id=execution_id)
             result_data = await tool.handler(**parsed_args)
-            
+
             # Step 6: Validate result
             if not isinstance(result_data, dict):
                 result_data = {"result": str(result_data)}
-            
+
             duration = time.time() - start_time
             log_entry["duration"] = duration
             log_entry["success"] = True
             self.execution_log.append(log_entry)
-            
+
             logger.info("tool_executed", tool=tool_name, duration=f"{duration:.3f}s", success=True)
             return ToolExecutionResult(success=True, data=result_data)
-            
+
         except Exception as e:
             duration = time.time() - start_time
             log_entry["duration"] = duration
             log_entry["success"] = False
             log_entry["error"] = str(e)
             self.execution_log.append(log_entry)
-            
+
             logger.error("tool_execution_failed", tool=tool_name, error=str(e))
             return ToolExecutionResult(success=False, error=str(e), error_code="EXECUTION_ERROR")

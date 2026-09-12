@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 from apps.api.schemas.tenant import TenantResponse
 
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -11,10 +12,12 @@ class UserCreate(BaseModel):
     last_name: Optional[str] = None
     role: str
 
+
 class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     is_active: Optional[bool] = None
+
 
 class UserResponse(BaseModel):
     id: uuid.UUID
@@ -26,11 +29,13 @@ class UserResponse(BaseModel):
     is_active: bool
     last_login_at: Optional[datetime]
     created_at: datetime
-    
+
     model_config = {"from_attributes": True}
+
 
 class UserDetailResponse(UserResponse):
     tenant: TenantResponse
+
 
 class CurrentUserResponse(UserDetailResponse):
     permissions: List[str] = []

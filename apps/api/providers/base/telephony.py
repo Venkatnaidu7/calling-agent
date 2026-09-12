@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 from dataclasses import dataclass
 
+
 @dataclass
 class CallResult:
     provider_call_id: str
@@ -9,6 +10,7 @@ class CallResult:
     from_number: str
     to_number: str
     metadata: dict[str, Any] = None
+
 
 @dataclass
 class TransferResult:

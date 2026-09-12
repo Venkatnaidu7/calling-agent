@@ -2,9 +2,11 @@ from abc import ABC, abstractmethod
 from typing import Any, Callable, Awaitable
 from dataclasses import dataclass, field
 
+
 @dataclass
 class RealtimeSessionConfig:
     """Configuration for a realtime AI voice session."""
+
     model: str = "gpt-4o-mini-realtime-preview"
     voice: str = "ash"
     instructions: str = ""
@@ -12,22 +14,29 @@ class RealtimeSessionConfig:
     output_audio_format: str = "g711_ulaw"
     temperature: float = 0.8
     max_response_output_tokens: int = 1024
-    turn_detection: dict[str, Any] = field(default_factory=lambda: {
-        "type": "server_vad",
-        "threshold": 0.5,
-        "prefix_padding_ms": 300,
-        "silence_duration_ms": 500,
-        "create_response": True,
-    })
+    turn_detection: dict[str, Any] = field(
+        default_factory=lambda: {
+            "type": "server_vad",
+            "threshold": 0.5,
+            "prefix_padding_ms": 300,
+            "silence_duration_ms": 500,
+            "create_response": True,
+        }
+    )
     tools: list[dict[str, Any]] = field(default_factory=list)
-    input_audio_transcription: dict[str, Any] = field(default_factory=lambda: {"model": "whisper-1"})
+    input_audio_transcription: dict[str, Any] = field(
+        default_factory=lambda: {"model": "whisper-1"}
+    )
+
 
 @dataclass
 class RealtimeEvent:
     """An event from the realtime AI provider."""
+
     type: str
     data: dict[str, Any] = field(default_factory=dict)
     raw: dict[str, Any] = field(default_factory=dict)
+
 
 class RealtimeAIProvider(ABC):
     """Abstract interface for realtime AI voice providers."""
@@ -63,9 +72,7 @@ class RealtimeAIProvider(ABC):
         ...
 
     @abstractmethod
-    async def truncate_audio(
-        self, item_id: str, content_index: int, audio_end_ms: int
-    ) -> None:
+    async def truncate_audio(self, item_id: str, content_index: int, audio_end_ms: int) -> None:
         """Truncate assistant audio to what was actually played (for barge-in)."""
         ...
 
@@ -85,11 +92,12 @@ class RealtimeAIProvider(ABC):
         ...
 
     @abstractmethod
-    def on_event(self, event_type: str, handler: Callable[[RealtimeEvent], Awaitable[None]]) -> None:
+    def on_event(
+        self, event_type: str, handler: Callable[[RealtimeEvent], Awaitable[None]]
+    ) -> None:
         """Register an event handler for a specific event type."""
         ...
 
     @property
     @abstractmethod
-    def is_connected(self) -> bool:
-        ...
+    def is_connected(self) -> bool: ...

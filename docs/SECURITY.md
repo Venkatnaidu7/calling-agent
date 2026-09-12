@@ -126,6 +126,7 @@ from fastapi import Depends, HTTPException, status
 from apps.api.models.user import User
 from apps.api.dependencies import get_current_user
 
+
 class RequireRole:
     def __init__(self, allowed_roles: list[str]):
         self.allowed_roles = allowed_roles
@@ -134,7 +135,7 @@ class RequireRole:
         if user.role not in self.allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Insufficient role permissions for this operation"
+                detail="Insufficient role permissions for this operation",
             )
         return user
 ```
@@ -181,9 +182,7 @@ async def get_db_session(tenant_id: UUID | None = Depends(get_current_tenant_id)
     async with async_session_factory() as session:
         if tenant_id:
             # Set connection-level session variable for RLS
-            await session.execute(
-                text(f"SET LOCAL app.current_tenant_id = '{str(tenant_id)}'")
-            )
+            await session.execute(text(f"SET LOCAL app.current_tenant_id = '{str(tenant_id)}'"))
         try:
             yield session
             await session.commit()

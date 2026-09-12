@@ -1,8 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from apps.api.schemas.auth import (
-    RegisterRequest, LoginRequest, TokenResponse, RefreshTokenRequest,
-    ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest,
+    RegisterRequest,
+    LoginRequest,
+    TokenResponse,
+    RefreshTokenRequest,
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 from apps.api.schemas.user import CurrentUserResponse
 from apps.api.services.auth_service import AuthService
@@ -13,33 +18,56 @@ from apps.api.middleware.rate_limit import rate_limit
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(rate_limit(5, 3600))])
+
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit(5, 3600))],
+)
 async def register(request: Request, data: RegisterRequest, db: AsyncSession = Depends(get_db)):
     auth_service = AuthService(db)
-    return await auth_service.register(data, ip=request.client.host, user_agent=request.headers.get("user-agent"))
+    return await auth_service.register(
+        data, ip=request.client.host, user_agent=request.headers.get("user-agent")
+    )
+
 
 @router.post("/login", response_model=TokenResponse, dependencies=[Depends(rate_limit(10, 60))])
 async def login(request: Request, data: LoginRequest, db: AsyncSession = Depends(get_db)):
     auth_service = AuthService(db)
-    return await auth_service.login(data, ip=request.client.host, user_agent=request.headers.get("user-agent"))
+    return await auth_service.login(
+        data, ip=request.client.host, user_agent=request.headers.get("user-agent")
+    )
+
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(request: Request, data: RefreshTokenRequest, db: AsyncSession = Depends(get_db)):
     auth_service = AuthService(db)
-    return await auth_service.refresh_token(data.refresh_token, ip=request.client.host, user_agent=request.headers.get("user-agent"))
+    return await auth_service.refresh_token(
+        data.refresh_token, ip=request.client.host, user_agent=request.headers.get("user-agent")
+    )
+
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(request: Request, data: RefreshTokenRequest, db: AsyncSession = Depends(get_db)):
     auth_service = AuthService(db)
     await auth_service.logout(data.refresh_token, ip=request.client.host)
 
+
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
-async def logout_all(request: Request, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def logout_all(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     auth_service = AuthService(db)
     await auth_service.logout_all(current_user.id, ip=request.client.host)
 
+
 @router.get("/me", response_model=CurrentUserResponse)
-async def get_me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_me(
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
     from apps.api.middleware.auth import ROLE_PERMISSIONS
     from apps.api.repositories.tenant_repo import TenantRepository
 
@@ -62,6 +90,7 @@ async def get_me(current_user: User = Depends(get_current_user), db: AsyncSessio
     }
     return CurrentUserResponse.model_validate(user_data)
 
+
 @router.post("/change-password", status_code=status.HTTP_200_OK)
 async def change_password(
     request: Request,
@@ -73,9 +102,12 @@ async def change_password(
     from apps.api.services.audit_service import AuditService
 
     if not verify_password(data.current_password, current_user.password_hash):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect"
+        )
 
     from apps.api.repositories.user_repo import UserRepository
+
     user_repo = UserRepository(db, tenant_id=current_user.tenant_id)
     await user_repo.update(current_user.id, password_hash=hash_password(data.new_password))
 
@@ -93,8 +125,12 @@ async def change_password(
     return {"message": "Password changed successfully"}
 
 
-@router.post("/forgot-password", status_code=status.HTTP_200_OK, dependencies=[Depends(rate_limit(5, 3600))])
-async def forgot_password(request: Request, data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+@router.post(
+    "/forgot-password", status_code=status.HTTP_200_OK, dependencies=[Depends(rate_limit(5, 3600))]
+)
+async def forgot_password(
+    request: Request, data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
+):
     """
     Initiates password reset. Always returns success to prevent email enumeration.
     Generates a secure 15-minute token in Redis and dispatches an email.
@@ -114,7 +150,7 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest, db: Asy
         redis = request.app.state.redis
         if redis:
             await redis.set(f"pwd_reset:{hashed}", str(user.id), ex=900)
-        
+
         email_service = EmailService()
         await email_service.send_password_reset_email(user.email, raw_token)
         logger.info("password_reset_initiated", email=data.email)
@@ -122,8 +158,12 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest, db: Asy
     return {"message": "If an account exists with that email, a password reset link has been sent."}
 
 
-@router.post("/reset-password", status_code=status.HTTP_200_OK, dependencies=[Depends(rate_limit(5, 60))])
-async def reset_password(request: Request, data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+@router.post(
+    "/reset-password", status_code=status.HTTP_200_OK, dependencies=[Depends(rate_limit(5, 60))]
+)
+async def reset_password(
+    request: Request, data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)
+):
     """
     Resets password using a validated one-time token from Redis.
     """
@@ -159,7 +199,9 @@ async def reset_password(request: Request, data: ResetPasswordRequest, db: Async
     user = await user_repo.get_by_id(user_uuid)
 
     if not user or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or inactive.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found or inactive."
+        )
 
     # Update password
     new_hash = hash_password(data.new_password)
@@ -174,4 +216,6 @@ async def reset_password(request: Request, data: ResetPasswordRequest, db: Async
     await db.commit()
 
     logger.info("password_reset_completed", user_id=str(user.id))
-    return {"message": "Password has been reset successfully. You can now log in with your new password."}
+    return {
+        "message": "Password has been reset successfully. You can now log in with your new password."
+    }

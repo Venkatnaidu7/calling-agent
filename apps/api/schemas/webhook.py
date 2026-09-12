@@ -1,13 +1,15 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, Field
 
 
 class WebhookEndpointCreate(BaseModel):
     url: str = Field(..., description="Target HTTPS URL to receive webhooks")
     description: Optional[str] = None
-    events: List[str] = Field(default_factory=lambda: ["*"], description="List of event types or ['*'] for all")
+    events: List[str] = Field(
+        default_factory=lambda: ["*"], description="List of event types or ['*'] for all"
+    )
 
 
 class WebhookEndpointUpdate(BaseModel):

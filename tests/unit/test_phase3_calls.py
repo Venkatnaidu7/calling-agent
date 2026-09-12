@@ -1,7 +1,6 @@
 import pytest
-import uuid
 from httpx import AsyncClient
-from apps.api.models import User, Tenant, PhoneNumber, CallLog
+from apps.api.models import User
 from tests.conftest import auth_headers
 
 

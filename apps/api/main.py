@@ -12,6 +12,7 @@ from apps.api.dependencies import init_redis, close_redis
 
 logger = structlog.get_logger()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -22,6 +23,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down application...")
     await close_redis()
 
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="AI Voice Calling SaaS Platform",
@@ -30,7 +32,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         docs_url="/api/docs",
         redoc_url="/api/redoc",
-        openapi_url="/api/openapi.json"
+        openapi_url="/api/openapi.json",
     )
 
     # Middleware setup (order matters)
@@ -56,9 +58,9 @@ def create_app() -> FastAPI:
                 "success": False,
                 "error": {
                     "code": "INTERNAL_SERVER_ERROR",
-                    "message": "An unexpected error occurred."
-                }
-            }
+                    "message": "An unexpected error occurred.",
+                },
+            },
         )
 
     # Routers
@@ -69,8 +71,18 @@ def create_app() -> FastAPI:
     app.include_router(agents.router)
     app.include_router(voice.router)
     app.include_router(knowledge.router, prefix="/api/v1")
-    
-    from apps.api.routers import contacts, campaigns, compliance, phone_numbers, call_logs, billing, analytics, webhooks
+
+    from apps.api.routers import (
+        contacts,
+        campaigns,
+        compliance,
+        phone_numbers,
+        call_logs,
+        billing,
+        analytics,
+        webhooks,
+    )
+
     app.include_router(contacts.router)
     app.include_router(campaigns.router)
     app.include_router(compliance.router)
@@ -81,5 +93,6 @@ def create_app() -> FastAPI:
     app.include_router(webhooks.router)
 
     return app
+
 
 app = create_app()

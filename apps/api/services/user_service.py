@@ -6,6 +6,7 @@ from apps.api.schemas.common import PaginationParams, PaginatedResponse
 from apps.api.repositories.user_repo import UserRepository
 from apps.api.utils.crypto import hash_password
 
+
 class UserService:
     def __init__(self, session: AsyncSession, tenant_id: UUID):
         self.session = session
@@ -15,12 +16,14 @@ class UserService:
     async def create_user(self, data: UserCreate) -> UserResponse:
         existing_user = await self.user_repo.get_by_email_global(data.email)
         if existing_user:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already taken")
-            
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Email already taken"
+            )
+
         dumped_data = data.model_dump()
-        if 'password' in dumped_data:
-            dumped_data['password_hash'] = hash_password(dumped_data.pop('password'))
-            
+        if "password" in dumped_data:
+            dumped_data["password_hash"] = hash_password(dumped_data.pop("password"))
+
         user = await self.user_repo.create(**dumped_data)
         await self.session.commit()
         return UserResponse.model_validate(user)
@@ -33,9 +36,9 @@ class UserService:
 
     async def update_user(self, user_id: UUID, data: UserUpdate) -> UserResponse:
         dumped_data = data.model_dump(exclude_unset=True)
-        if 'password' in dumped_data:
-            dumped_data['password_hash'] = hash_password(dumped_data.pop('password'))
-            
+        if "password" in dumped_data:
+            dumped_data["password_hash"] = hash_password(dumped_data.pop("password"))
+
         user = await self.user_repo.update(user_id, **dumped_data)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

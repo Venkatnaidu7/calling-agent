@@ -1,10 +1,15 @@
 from uuid import UUID
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from apps.api.models.call_log import CallLog
-from apps.api.schemas.call_log import CallLogFilter, CallLogResponse, CallTranscriptResponse, CallStatsResponse
+from apps.api.schemas.call_log import (
+    CallLogFilter,
+    CallLogResponse,
+    CallTranscriptResponse,
+    CallStatsResponse,
+)
 from apps.api.schemas.common import PaginationParams, PaginatedResponse
 from apps.api.repositories.call_log_repo import CallLogRepository
 
@@ -31,7 +36,9 @@ class CallLogService:
     async def get_log(self, call_id: str) -> CallLogResponse:
         log = await self.repo.get_by_call_id(call_id)
         if not log:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call record not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Call record not found"
+            )
         return CallLogResponse.model_validate(log)
 
     async def list_logs(
@@ -52,7 +59,9 @@ class CallLogService:
     async def get_transcript(self, call_id: str) -> CallTranscriptResponse:
         log = await self.repo.get_by_call_id(call_id)
         if not log:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call record not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Call record not found"
+            )
         return CallTranscriptResponse(
             call_id=log.call_id,
             transcript=log.transcript,

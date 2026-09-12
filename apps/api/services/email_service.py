@@ -15,7 +15,9 @@ class EmailService:
         self.from_email = settings.email_from_address or "noreply@aicalling.com"
         self.from_name = settings.email_from_name or "AI Voice Platform"
 
-    async def send_email(self, to_email: str, subject: str, html_content: str, text_content: str = "") -> bool:
+    async def send_email(
+        self, to_email: str, subject: str, html_content: str, text_content: str = ""
+    ) -> bool:
         """Dispatches an email via SendGrid API or logs locally in dev mode."""
         if not self.api_key or self.api_key.startswith("SG.your-"):
             # Development / Mock Mode: Log email preview safely without crashing
@@ -55,7 +57,9 @@ class EmailService:
             logger.error("email_send_exception", error=str(e), to=to_email)
             return False
 
-    async def send_password_reset_email(self, to_email: str, reset_token: str, reset_url: str = "") -> bool:
+    async def send_password_reset_email(
+        self, to_email: str, reset_token: str, reset_url: str = ""
+    ) -> bool:
         """Sends a secure password reset link to the user."""
         target_url = reset_url or f"http://localhost:3000/reset-password?token={reset_token}"
         subject = "Reset Your Password - AI Voice Platform"

@@ -5,6 +5,7 @@ from apps.api.models import User
 from apps.api.schemas.common import PaginationParams
 from apps.api.repositories.base import BaseRepository
 
+
 class UserRepository(BaseRepository[User]):
     def __init__(self, session: AsyncSession, tenant_id: UUID | None = None):
         super().__init__(model=User, session=session, tenant_id=tenant_id)

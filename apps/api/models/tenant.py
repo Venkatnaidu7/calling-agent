@@ -1,12 +1,17 @@
 import uuid
-from typing import Any, List
+from typing import TYPE_CHECKING, Any, List
 
-from sqlalchemy import String, CheckConstraint
+from sqlalchemy import CheckConstraint, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from apps.api.database import Base
 from apps.api.models.base import TimestampMixin
+
+if TYPE_CHECKING:
+    from apps.api.models.api_key import ApiKey
+    from apps.api.models.user import User
+
 
 class Tenant(Base, TimestampMixin):
     __tablename__ = "tenants"
@@ -19,12 +24,22 @@ class Tenant(Base, TimestampMixin):
     timezone: Mapped[str] = mapped_column(String, default="UTC", server_default="UTC")
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")
     settings: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="'{}'")
-    business_hours: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="'{}'")
-    compliance_settings: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="'{}'")
-
-    __table_args__ = (
-        CheckConstraint(status.in_(['active', 'suspended', 'cancelled']), name='tenant_status_check'),
+    business_hours: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, server_default="'{}'"
+    )
+    compliance_settings: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, server_default="'{}'"
     )
 
-    users: Mapped[List["User"]] = relationship(back_populates="tenant", cascade="all, delete-orphan")
-    api_keys: Mapped[List["ApiKey"]] = relationship(back_populates="tenant", cascade="all, delete-orphan")
+    __table_args__ = (
+        CheckConstraint(
+            status.in_(["active", "suspended", "cancelled"]), name="tenant_status_check"
+        ),
+    )
+
+    users: Mapped[List["User"]] = relationship(
+        back_populates="tenant", cascade="all, delete-orphan"
+    )
+    api_keys: Mapped[List["ApiKey"]] = relationship(
+        back_populates="tenant", cascade="all, delete-orphan"
+    )

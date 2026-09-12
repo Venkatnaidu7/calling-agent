@@ -4,41 +4,26 @@ from apps.api.tools.registry import ToolRegistry, ToolDefinition
 
 logger = structlog.get_logger()
 
+
 async def transfer_call(
-    reason: str,
-    department: str = None,
-    phone_number: str = None,
-    _context: dict = None,
-    **kwargs
+    reason: str, department: str = None, phone_number: str = None, _context: dict = None, **kwargs
 ) -> dict[str, Any]:
     """Transfer the current call to a human agent or department."""
-    logger.info("transfer_call_requested", reason=reason, department=department, phone_number=phone_number)
-    return {
-        "transfer_initiated": True,
-        "reason": reason,
-        "message": "Transfer initiated"
-    }
+    logger.info(
+        "transfer_call_requested", reason=reason, department=department, phone_number=phone_number
+    )
+    return {"transfer_initiated": True, "reason": reason, "message": "Transfer initiated"}
+
 
 async def end_call(
-    reason: str,
-    summary: str = None,
-    _context: dict = None,
-    **kwargs
+    reason: str, summary: str = None, _context: dict = None, **kwargs
 ) -> dict[str, Any]:
     """End the current call gracefully."""
     logger.info("end_call_requested", reason=reason, summary=summary)
-    return {
-        "call_ending": True,
-        "reason": reason,
-        "message": "Call is ending"
-    }
+    return {"call_ending": True, "reason": reason, "message": "Call is ending"}
 
-async def send_sms(
-    to_number: str,
-    message: str,
-    _context: dict = None,
-    **kwargs
-) -> dict[str, Any]:
+
+async def send_sms(to_number: str, message: str, _context: dict = None, **kwargs) -> dict[str, Any]:
     """Send an SMS to the caller via Twilio messaging API."""
     import asyncio
     from twilio.rest import Client
@@ -52,6 +37,7 @@ async def send_sms(
 
     try:
         sender_number = (_context.get("to_number") if _context else None) or "+18005550199"
+
         def _send():
             client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
             # Send message
@@ -66,85 +52,100 @@ async def send_sms(
         return {
             "sent": True,
             "message_sid": msg_sid,
-            "message": "SMS sent successfully to recipient"
+            "message": "SMS sent successfully to recipient",
         }
     except Exception as e:
         logger.error("send_sms_failed", error=str(e), to=to_number)
         return {"sent": False, "error": str(e)}
+
 
 async def create_callback(
     phone_number: str,
     preferred_time: str = None,
     reason: str = None,
     _context: dict = None,
-    **kwargs
+    **kwargs,
 ) -> dict[str, Any]:
     """Schedule a callback."""
-    logger.info("create_callback_requested", phone_number=phone_number, preferred_time=preferred_time, reason=reason)
-    return {
-        "callback_scheduled": True,
-        "message": "Callback scheduled successfully"
-    }
+    logger.info(
+        "create_callback_requested",
+        phone_number=phone_number,
+        preferred_time=preferred_time,
+        reason=reason,
+    )
+    return {"callback_scheduled": True, "message": "Callback scheduled successfully"}
+
 
 def register_transfer_tools():
-    ToolRegistry.register(ToolDefinition(
-        name="transfer_call",
-        description="Transfer the current call to a human agent or department",
-        parameters={
-            "type": "object",
-            "properties": {
-                "reason": {"type": "string", "description": "Reason for the transfer"},
-                "department": {"type": "string", "description": "Target department"},
-                "phone_number": {"type": "string", "description": "Specific phone number to transfer to"},
+    ToolRegistry.register(
+        ToolDefinition(
+            name="transfer_call",
+            description="Transfer the current call to a human agent or department",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "reason": {"type": "string", "description": "Reason for the transfer"},
+                    "department": {"type": "string", "description": "Target department"},
+                    "phone_number": {
+                        "type": "string",
+                        "description": "Specific phone number to transfer to",
+                    },
+                },
+                "required": ["reason"],
             },
-            "required": ["reason"],
-        },
-        handler=transfer_call,
-        category="transfer",
-    ))
-    
-    ToolRegistry.register(ToolDefinition(
-        name="end_call",
-        description="End the current call gracefully",
-        parameters={
-            "type": "object",
-            "properties": {
-                "reason": {"type": "string", "description": "Reason for ending the call"},
-                "summary": {"type": "string", "description": "Brief summary of the call"},
+            handler=transfer_call,
+            category="transfer",
+        )
+    )
+
+    ToolRegistry.register(
+        ToolDefinition(
+            name="end_call",
+            description="End the current call gracefully",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "reason": {"type": "string", "description": "Reason for ending the call"},
+                    "summary": {"type": "string", "description": "Brief summary of the call"},
+                },
+                "required": ["reason"],
             },
-            "required": ["reason"],
-        },
-        handler=end_call,
-        category="transfer",
-    ))
-    
-    ToolRegistry.register(ToolDefinition(
-        name="send_sms",
-        description="Send an SMS to the caller",
-        parameters={
-            "type": "object",
-            "properties": {
-                "to_number": {"type": "string", "description": "Phone number to send SMS to"},
-                "message": {"type": "string", "description": "SMS message content"},
+            handler=end_call,
+            category="transfer",
+        )
+    )
+
+    ToolRegistry.register(
+        ToolDefinition(
+            name="send_sms",
+            description="Send an SMS to the caller",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "to_number": {"type": "string", "description": "Phone number to send SMS to"},
+                    "message": {"type": "string", "description": "SMS message content"},
+                },
+                "required": ["to_number", "message"],
             },
-            "required": ["to_number", "message"],
-        },
-        handler=send_sms,
-        category="transfer",
-    ))
-    
-    ToolRegistry.register(ToolDefinition(
-        name="create_callback",
-        description="Schedule a callback",
-        parameters={
-            "type": "object",
-            "properties": {
-                "phone_number": {"type": "string", "description": "Phone number to call back"},
-                "preferred_time": {"type": "string", "description": "Preferred callback time"},
-                "reason": {"type": "string", "description": "Reason for the callback"},
+            handler=send_sms,
+            category="transfer",
+        )
+    )
+
+    ToolRegistry.register(
+        ToolDefinition(
+            name="create_callback",
+            description="Schedule a callback",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "phone_number": {"type": "string", "description": "Phone number to call back"},
+                    "preferred_time": {"type": "string", "description": "Preferred callback time"},
+                    "reason": {"type": "string", "description": "Reason for the callback"},
+                },
+                "required": ["phone_number"],
             },
-            "required": ["phone_number"],
-        },
-        handler=create_callback,
-        category="transfer",
-    ))
+            handler=create_callback,
+            category="transfer",
+        )
+    )

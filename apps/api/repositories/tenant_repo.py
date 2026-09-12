@@ -1,17 +1,17 @@
 import re
-from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 from apps.api.models import Tenant
 from apps.api.schemas.common import PaginationParams
 from apps.api.repositories.base import BaseRepository
+
 
 class TenantRepository(BaseRepository[Tenant]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=Tenant, session=session, tenant_id=None)
 
     def _generate_slug(self, name: str) -> str:
-        slug = re.sub(r'[^a-zA-Z0-9]+', '-', name.lower()).strip('-')
+        slug = re.sub(r"[^a-zA-Z0-9]+", "-", name.lower()).strip("-")
         return slug
 
     async def get_by_slug(self, slug: str) -> Tenant | None:
@@ -29,9 +29,9 @@ class TenantRepository(BaseRepository[Tenant]):
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             kwargs["slug"] = slug
-            
+
         return await super().create(**kwargs)
-        
+
     async def get_by_status(self, status: str) -> list[Tenant]:
         stmt = select(Tenant).where(Tenant.status == status)
         result = await self.session.execute(stmt)

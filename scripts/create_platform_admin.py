@@ -4,9 +4,9 @@ Create Initial Platform Administrator Account
 Usage:
     python scripts/create_platform_admin.py --email admin@example.com --password "YourSecurePassword"
 """
+
 import asyncio
 import argparse
-import uuid
 from apps.api.database import async_session_factory
 from apps.api.models.tenant import Tenant
 from apps.api.models.user import User
@@ -14,7 +14,9 @@ from apps.api.utils.crypto import hash_password
 from sqlalchemy import select
 
 
-async def create_platform_admin(email: str, password: str, first_name: str = "Super", last_name: str = "Admin"):
+async def create_platform_admin(
+    email: str, password: str, first_name: str = "Super", last_name: str = "Admin"
+):
     async with async_session_factory() as session:
         # 1. Check if user already exists
         stmt = select(User).where(User.email == email)
@@ -56,14 +58,16 @@ async def create_platform_admin(email: str, password: str, first_name: str = "Su
         session.add(admin_user)
         await session.commit()
 
-        print(f"\n[SUCCESS] Platform Super Admin account created successfully!")
+        print("\n[SUCCESS] Platform Super Admin account created successfully!")
         print(f"  Email: {email}")
-        print(f"  Role:  PLATFORM_ADMIN")
-        print(f"  You can now log in at /login with these credentials.\n")
+        print("  Role:  PLATFORM_ADMIN")
+        print("  You can now log in at /login with these credentials.\n")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Create the master Platform Administrator account.")
+    parser = argparse.ArgumentParser(
+        description="Create the master Platform Administrator account."
+    )
     parser.add_argument("--email", required=True, help="Master Admin Email address")
     parser.add_argument("--password", required=True, help="Master Admin Password")
     parser.add_argument("--first-name", default="Super", help="First name")

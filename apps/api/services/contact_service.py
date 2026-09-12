@@ -2,9 +2,14 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 from apps.api.models.contact import Contact, ContactList
-from apps.api.schemas.contact import ContactCreate, ContactUpdate, ContactListCreate, ContactListUpdate
+from apps.api.schemas.contact import ContactCreate, ContactUpdate, ContactListCreate
 from apps.api.schemas.common import PaginationParams
-from apps.api.repositories.contact_repo import ContactRepository, ContactListRepository, ContactListMemberRepository
+from apps.api.repositories.contact_repo import (
+    ContactRepository,
+    ContactListRepository,
+    ContactListMemberRepository,
+)
+
 
 class ContactService:
     def __init__(self, session: AsyncSession, tenant_id: UUID):

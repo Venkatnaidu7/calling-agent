@@ -63,10 +63,12 @@ async def open_customer_portal(
 ):
     """Generate Stripe billing portal URL to manage payment methods & invoices."""
     parsed = urlparse(return_url)
-    if parsed.netloc and parsed.netloc not in [urlparse(o).netloc for o in settings.cors_origins if o]:
+    if parsed.netloc and parsed.netloc not in [
+        urlparse(o).netloc for o in settings.cors_origins if o
+    ]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid return_url: must match an approved origin or be a relative path."
+            detail="Invalid return_url: must match an approved origin or be a relative path.",
         )
     return await service.create_customer_portal(return_url)
 
@@ -98,9 +100,7 @@ async def stripe_webhook_handler(
         return Response(content="Missing webhook secret or signature", status_code=400)
 
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.stripe_webhook_secret
-        )
+        event = stripe.Webhook.construct_event(payload, sig_header, settings.stripe_webhook_secret)
     except Exception as e:
         logger.error("stripe_webhook_signature_failed", error=str(e))
         return Response(content="Invalid signature", status_code=400)
@@ -120,6 +120,7 @@ async def stripe_webhook_handler(
 
         if tenant_id:
             import uuid
+
             t_uuid = uuid.UUID(tenant_id)
             sub = await sub_repo.get_by_tenant(t_uuid)
             if sub:
@@ -131,7 +132,9 @@ async def stripe_webhook_handler(
                     status="active",
                 )
                 await db.commit()
-                logger.info("subscription_activated_from_checkout", tenant_id=tenant_id, plan=plan_tier)
+                logger.info(
+                    "subscription_activated_from_checkout", tenant_id=tenant_id, plan=plan_tier
+                )
 
     elif event_type in ("customer.subscription.updated", "customer.subscription.deleted"):
         subscription_id = data_object.get("id")

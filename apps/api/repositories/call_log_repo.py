@@ -55,7 +55,13 @@ class CallLogRepository(BaseRepository[CallLog]):
         count_res = await self.session.execute(count_stmt)
         total = count_res.scalar_one()
 
-        stmt = select(CallLog).where(where_clause).order_by(CallLog.created_at.desc()).offset(pagination.skip).limit(pagination.limit)
+        stmt = (
+            select(CallLog)
+            .where(where_clause)
+            .order_by(CallLog.created_at.desc())
+            .offset(pagination.skip)
+            .limit(pagination.limit)
+        )
         result = await self.session.execute(stmt)
         items = list(result.scalars().all())
 
@@ -87,17 +93,29 @@ class CallLogRepository(BaseRepository[CallLog]):
         total_calls, total_dur, avg_dur, total_cost = res.one()
 
         # Breakdown by status
-        status_stmt = select(CallLog.status, func.count(CallLog.id)).where(where_clause).group_by(CallLog.status)
+        status_stmt = (
+            select(CallLog.status, func.count(CallLog.id))
+            .where(where_clause)
+            .group_by(CallLog.status)
+        )
         status_res = await self.session.execute(status_stmt)
         by_status = {row[0]: row[1] for row in status_res.all()}
 
         # Breakdown by direction
-        dir_stmt = select(CallLog.direction, func.count(CallLog.id)).where(where_clause).group_by(CallLog.direction)
+        dir_stmt = (
+            select(CallLog.direction, func.count(CallLog.id))
+            .where(where_clause)
+            .group_by(CallLog.direction)
+        )
         dir_res = await self.session.execute(dir_stmt)
         by_direction = {row[0]: row[1] for row in dir_res.all()}
 
         # Breakdown by sentiment
-        sent_stmt = select(func.coalesce(CallLog.sentiment, 'unknown'), func.count(CallLog.id)).where(where_clause).group_by(CallLog.sentiment)
+        sent_stmt = (
+            select(func.coalesce(CallLog.sentiment, "unknown"), func.count(CallLog.id))
+            .where(where_clause)
+            .group_by(CallLog.sentiment)
+        )
         sent_res = await self.session.execute(sent_stmt)
         by_sentiment = {row[0]: row[1] for row in sent_res.all()}
 

@@ -1,15 +1,19 @@
 import json
 import asyncio
-import base64
 import structlog
 import websockets
-from typing import Any, Callable, Awaitable
-from apps.api.providers.base.realtime_ai import RealtimeAIProvider, RealtimeSessionConfig, RealtimeEvent
+from typing import Callable, Awaitable
+from apps.api.providers.base.realtime_ai import (
+    RealtimeAIProvider,
+    RealtimeSessionConfig,
+    RealtimeEvent,
+)
 from apps.api.config import settings
 
 logger = structlog.get_logger()
 
 WS_URL = "wss://api.openai.com/v1/realtime"
+
 
 class OpenAIRealtimeProvider(RealtimeAIProvider):
     def __init__(self):
@@ -26,13 +30,13 @@ class OpenAIRealtimeProvider(RealtimeAIProvider):
         }
         self.ws = await websockets.connect(url, additional_headers=headers)
         self._connected = True
-        
+
         # Wait for session.created event
         raw = await self.ws.recv()
         event = json.loads(raw)
         if event.get("type") != "session.created":
             raise ConnectionError(f"Expected session.created, got {event.get('type')}")
-        
+
         # Configure session
         await self.update_session(config)
         logger.info("openai_realtime_connected", model=config.model)
@@ -48,23 +52,31 @@ class OpenAIRealtimeProvider(RealtimeAIProvider):
     async def send_audio(self, audio_base64: str):
         if not self.ws:
             return
-        await self.ws.send(json.dumps({
-            "type": "input_audio_buffer.append",
-            "audio": audio_base64,
-        }))
+        await self.ws.send(
+            json.dumps(
+                {
+                    "type": "input_audio_buffer.append",
+                    "audio": audio_base64,
+                }
+            )
+        )
 
     async def send_tool_result(self, call_id: str, result: str):
         if not self.ws:
             return
         # Send function_call_output
-        await self.ws.send(json.dumps({
-            "type": "conversation.item.create",
-            "item": {
-                "type": "function_call_output",
-                "call_id": call_id,
-                "output": result,
-            }
-        }))
+        await self.ws.send(
+            json.dumps(
+                {
+                    "type": "conversation.item.create",
+                    "item": {
+                        "type": "function_call_output",
+                        "call_id": call_id,
+                        "output": result,
+                    },
+                }
+            )
+        )
         # Request AI to respond with the result
         await self.request_response()
 
@@ -81,12 +93,16 @@ class OpenAIRealtimeProvider(RealtimeAIProvider):
     async def truncate_audio(self, item_id: str, content_index: int, audio_end_ms: int):
         if not self.ws:
             return
-        await self.ws.send(json.dumps({
-            "type": "conversation.item.truncate",
-            "item_id": item_id,
-            "content_index": content_index,
-            "audio_end_ms": audio_end_ms,
-        }))
+        await self.ws.send(
+            json.dumps(
+                {
+                    "type": "conversation.item.truncate",
+                    "item_id": item_id,
+                    "content_index": content_index,
+                    "audio_end_ms": audio_end_ms,
+                }
+            )
+        )
 
     async def update_session(self, config: RealtimeSessionConfig):
         if not self.ws:
@@ -105,21 +121,25 @@ class OpenAIRealtimeProvider(RealtimeAIProvider):
                 "tool_choice": "auto",
                 "temperature": config.temperature,
                 "max_response_output_tokens": config.max_response_output_tokens,
-            }
+            },
         }
         await self.ws.send(json.dumps(session_update))
 
     async def inject_context(self, role: str, content: str):
         if not self.ws:
             return
-        await self.ws.send(json.dumps({
-            "type": "conversation.item.create",
-            "item": {
-                "type": "message",
-                "role": role,
-                "content": [{"type": "input_text", "text": content}],
-            }
-        }))
+        await self.ws.send(
+            json.dumps(
+                {
+                    "type": "conversation.item.create",
+                    "item": {
+                        "type": "message",
+                        "role": role,
+                        "content": [{"type": "input_text", "text": content}],
+                    },
+                }
+            )
+        )
 
     async def receive_events(self):
         """Main event loop - receives events from OpenAI and dispatches to handlers."""
@@ -131,11 +151,11 @@ class OpenAIRealtimeProvider(RealtimeAIProvider):
                     event_data = json.loads(message)
                     event_type = event_data.get("type", "")
                     event = RealtimeEvent(type=event_type, data=event_data, raw=event_data)
-                    
+
                     # Dispatch to registered handlers
                     handlers = self._event_handlers.get(event_type, [])
                     wildcard_handlers = self._event_handlers.get("*", [])
-                    
+
                     for handler in handlers + wildcard_handlers:
                         try:
                             await handler(event)

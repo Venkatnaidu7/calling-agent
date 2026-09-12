@@ -6,7 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from apps.api.database import get_db
 from apps.api.dependencies import get_tenant_context, require_roles
 from apps.api.models.user import User
-from apps.api.schemas.call_log import CallLogFilter, CallLogResponse, CallTranscriptResponse, CallStatsResponse
+from apps.api.schemas.call_log import (
+    CallLogFilter,
+    CallLogResponse,
+    CallTranscriptResponse,
+    CallStatsResponse,
+)
 from apps.api.schemas.common import PaginationParams, PaginatedResponse
 from apps.api.services.call_log_service import CallLogService
 
@@ -24,7 +29,19 @@ def get_call_service(
 async def list_call_logs(
     service: Annotated[CallLogService, Depends(get_call_service)],
     pagination: Annotated[PaginationParams, Depends()],
-    user: Annotated[User, Depends(require_roles("TENANT_OWNER", "TENANT_ADMIN", "SUPERVISOR", "AGENT_MANAGER", "ANALYST", "READ_ONLY"))],
+    user: Annotated[
+        User,
+        Depends(
+            require_roles(
+                "TENANT_OWNER",
+                "TENANT_ADMIN",
+                "SUPERVISOR",
+                "AGENT_MANAGER",
+                "ANALYST",
+                "READ_ONLY",
+            )
+        ),
+    ],
     direction: Optional[str] = None,
     status: Optional[str] = None,
     agent_id: Optional[UUID] = None,
@@ -50,7 +67,19 @@ async def list_call_logs(
 @router.get("/stats", response_model=CallStatsResponse)
 async def get_call_statistics(
     service: Annotated[CallLogService, Depends(get_call_service)],
-    user: Annotated[User, Depends(require_roles("TENANT_OWNER", "TENANT_ADMIN", "SUPERVISOR", "AGENT_MANAGER", "ANALYST", "READ_ONLY"))],
+    user: Annotated[
+        User,
+        Depends(
+            require_roles(
+                "TENANT_OWNER",
+                "TENANT_ADMIN",
+                "SUPERVISOR",
+                "AGENT_MANAGER",
+                "ANALYST",
+                "READ_ONLY",
+            )
+        ),
+    ],
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
 ):
@@ -61,7 +90,19 @@ async def get_call_statistics(
 async def get_call_detail(
     call_id: str,
     service: Annotated[CallLogService, Depends(get_call_service)],
-    user: Annotated[User, Depends(require_roles("TENANT_OWNER", "TENANT_ADMIN", "SUPERVISOR", "AGENT_MANAGER", "ANALYST", "READ_ONLY"))],
+    user: Annotated[
+        User,
+        Depends(
+            require_roles(
+                "TENANT_OWNER",
+                "TENANT_ADMIN",
+                "SUPERVISOR",
+                "AGENT_MANAGER",
+                "ANALYST",
+                "READ_ONLY",
+            )
+        ),
+    ],
 ):
     return await service.get_log(call_id)
 
@@ -70,6 +111,18 @@ async def get_call_detail(
 async def get_call_transcript(
     call_id: str,
     service: Annotated[CallLogService, Depends(get_call_service)],
-    user: Annotated[User, Depends(require_roles("TENANT_OWNER", "TENANT_ADMIN", "SUPERVISOR", "AGENT_MANAGER", "ANALYST", "READ_ONLY"))],
+    user: Annotated[
+        User,
+        Depends(
+            require_roles(
+                "TENANT_OWNER",
+                "TENANT_ADMIN",
+                "SUPERVISOR",
+                "AGENT_MANAGER",
+                "ANALYST",
+                "READ_ONLY",
+            )
+        ),
+    ],
 ):
     return await service.get_transcript(call_id)

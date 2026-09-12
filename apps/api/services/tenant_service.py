@@ -5,6 +5,7 @@ from apps.api.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse, 
 from apps.api.schemas.common import PaginationParams, PaginatedResponse
 from apps.api.repositories.tenant_repo import TenantRepository
 
+
 class TenantService:
     def __init__(self, session: AsyncSession):
         self.session = session

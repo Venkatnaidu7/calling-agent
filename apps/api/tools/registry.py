@@ -1,12 +1,14 @@
 from typing import Any, Callable, Awaitable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import structlog
 
 logger = structlog.get_logger()
 
+
 @dataclass
 class ToolDefinition:
     """A registered tool that the AI can call."""
+
     name: str
     description: str
     parameters: dict[str, Any]  # JSON Schema
@@ -17,6 +19,7 @@ class ToolDefinition:
 
 class ToolRegistry:
     """Global registry of all available tools."""
+
     _tools: dict[str, ToolDefinition] = {}
 
     @classmethod
@@ -38,12 +41,14 @@ class ToolRegistry:
         tools = []
         for name, tool in cls._tools.items():
             if permitted_tools.get(name, False):
-                tools.append({
-                    "type": "function",
-                    "name": tool.name,
-                    "description": tool.description,
-                    "parameters": tool.parameters,
-                })
+                tools.append(
+                    {
+                        "type": "function",
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters,
+                    }
+                )
         return tools
 
     @classmethod

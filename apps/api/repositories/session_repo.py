@@ -5,6 +5,7 @@ from sqlalchemy import select, delete, update
 from apps.api.models import UserSession
 from apps.api.repositories.base import BaseRepository
 
+
 class SessionRepository(BaseRepository[UserSession]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=UserSession, session=session, tenant_id=None)
@@ -22,7 +23,11 @@ class SessionRepository(BaseRepository[UserSession]):
 
     async def revoke_all_for_user(self, user_id: UUID) -> None:
         now = datetime.now(timezone.utc)
-        stmt = update(UserSession).where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None)).values(revoked_at=now)
+        stmt = (
+            update(UserSession)
+            .where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
+            .values(revoked_at=now)
+        )
         await self.session.execute(stmt)
         await self.session.flush()
 

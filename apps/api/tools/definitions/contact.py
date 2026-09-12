@@ -7,15 +7,12 @@ from apps.api.repositories.contact_repo import ContactRepository
 
 logger = structlog.get_logger()
 
-async def get_customer(
-    phone_number: str,
-    _context: dict = None,
-    **kwargs
-) -> dict[str, Any]:
+
+async def get_customer(phone_number: str, _context: dict = None, **kwargs) -> dict[str, Any]:
     """Look up customer info by phone number in the tenant's database."""
     tenant_id_str = _context.get("tenant_id") if _context else None
     logger.info("get_customer_requested", phone_number=phone_number, tenant_id=tenant_id_str)
-    
+
     if not tenant_id_str:
         return {"found": False, "message": "No tenant context available"}
 
@@ -28,19 +25,21 @@ async def get_customer(
                 return {
                     "found": True,
                     "customer": {
-                        "name": f"{contact.first_name or ''} {contact.last_name or ''}".strip() or "Customer",
+                        "name": f"{contact.first_name or ''} {contact.last_name or ''}".strip()
+                        or "Customer",
                         "phone_number": contact.phone_number,
                         "email": contact.email,
                         "company": contact.company,
                         "customer_id": str(contact.id),
                         "notes": contact.notes,
                         "do_not_call": contact.do_not_call,
-                    }
+                    },
                 }
     except Exception as e:
         logger.error("get_customer_error", error=str(e))
 
     return {"found": False, "message": f"No customer found for number {phone_number}"}
+
 
 async def create_lead(
     name: str = None,
@@ -48,12 +47,14 @@ async def create_lead(
     email: str = None,
     notes: str = None,
     _context: dict = None,
-    **kwargs
+    **kwargs,
 ) -> dict[str, Any]:
     """Create a new lead/contact in the tenant's CRM."""
     tenant_id_str = _context.get("tenant_id") if _context else None
-    logger.info("create_lead_requested", name=name, phone_number=phone_number, tenant_id=tenant_id_str)
-    
+    logger.info(
+        "create_lead_requested", name=name, phone_number=phone_number, tenant_id=tenant_id_str
+    )
+
     if not tenant_id_str:
         return {"created": False, "message": "Missing tenant context"}
 
@@ -69,7 +70,7 @@ async def create_lead(
                 return {
                     "created": True,
                     "lead_id": str(existing.id),
-                    "message": f"Contact with number {phone_number} already existed; record referenced."
+                    "message": f"Contact with number {phone_number} already existed; record referenced.",
                 }
 
             contact = await repo.create(
@@ -85,22 +86,25 @@ async def create_lead(
             return {
                 "created": True,
                 "lead_id": str(contact.id),
-                "message": f"Lead created successfully for {name or 'Customer'}"
+                "message": f"Lead created successfully for {name or 'Customer'}",
             }
     except Exception as e:
         logger.error("create_lead_error", error=str(e))
         return {"created": False, "error": str(e)}
 
+
 async def update_customer(
-    customer_id: str,
-    updates: dict,
-    _context: dict = None,
-    **kwargs
+    customer_id: str, updates: dict, _context: dict = None, **kwargs
 ) -> dict[str, Any]:
     """Update customer information in tenant CRM."""
     tenant_id_str = _context.get("tenant_id") if _context else None
-    logger.info("update_customer_requested", customer_id=customer_id, updates=updates, tenant_id=tenant_id_str)
-    
+    logger.info(
+        "update_customer_requested",
+        customer_id=customer_id,
+        updates=updates,
+        tenant_id=tenant_id_str,
+    )
+
     if not tenant_id_str:
         return {"updated": False, "message": "Missing tenant context"}
 
@@ -109,59 +113,72 @@ async def update_customer(
         c_uuid = uuid.UUID(customer_id)
         async with async_session_factory() as session:
             repo = ContactRepository(session, tenant_id=tenant_uuid)
-            contact = await repo.update(c_uuid, **updates)
+            await repo.update(c_uuid, **updates)
             await session.commit()
             return {
                 "updated": True,
                 "customer_id": customer_id,
-                "message": "Customer record updated successfully"
+                "message": "Customer record updated successfully",
             }
     except Exception as e:
         logger.error("update_customer_error", error=str(e))
         return {"updated": False, "error": str(e)}
 
+
 def register_contact_tools():
-    ToolRegistry.register(ToolDefinition(
-        name="get_customer",
-        description="Look up customer info by phone number",
-        parameters={
-            "type": "object",
-            "properties": {
-                "phone_number": {"type": "string", "description": "Customer phone number to look up"},
+    ToolRegistry.register(
+        ToolDefinition(
+            name="get_customer",
+            description="Look up customer info by phone number",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "phone_number": {
+                        "type": "string",
+                        "description": "Customer phone number to look up",
+                    },
+                },
+                "required": ["phone_number"],
             },
-            "required": ["phone_number"],
-        },
-        handler=get_customer,
-        category="contact",
-    ))
-    
-    ToolRegistry.register(ToolDefinition(
-        name="create_lead",
-        description="Create a new lead or contact",
-        parameters={
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "description": "Lead name"},
-                "phone_number": {"type": "string", "description": "Lead phone number"},
-                "email": {"type": "string", "description": "Lead email address"},
-                "notes": {"type": "string", "description": "Additional notes for the lead"},
+            handler=get_customer,
+            category="contact",
+        )
+    )
+
+    ToolRegistry.register(
+        ToolDefinition(
+            name="create_lead",
+            description="Create a new lead or contact",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Lead name"},
+                    "phone_number": {"type": "string", "description": "Lead phone number"},
+                    "email": {"type": "string", "description": "Lead email address"},
+                    "notes": {"type": "string", "description": "Additional notes for the lead"},
+                },
             },
-        },
-        handler=create_lead,
-        category="contact",
-    ))
-    
-    ToolRegistry.register(ToolDefinition(
-        name="update_customer",
-        description="Update customer information",
-        parameters={
-            "type": "object",
-            "properties": {
-                "customer_id": {"type": "string", "description": "Customer ID to update"},
-                "updates": {"type": "object", "description": "Key-value pairs of fields to update"},
+            handler=create_lead,
+            category="contact",
+        )
+    )
+
+    ToolRegistry.register(
+        ToolDefinition(
+            name="update_customer",
+            description="Update customer information",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "customer_id": {"type": "string", "description": "Customer ID to update"},
+                    "updates": {
+                        "type": "object",
+                        "description": "Key-value pairs of fields to update",
+                    },
+                },
+                "required": ["customer_id", "updates"],
             },
-            "required": ["customer_id", "updates"],
-        },
-        handler=update_customer,
-        category="contact",
-    ))
+            handler=update_customer,
+            category="contact",
+        )
+    )

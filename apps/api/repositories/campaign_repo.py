@@ -4,9 +4,11 @@ from sqlalchemy import select
 from apps.api.models.campaign import Campaign, CampaignCall
 from apps.api.repositories.base import BaseRepository
 
+
 class CampaignRepository(BaseRepository[Campaign]):
     def __init__(self, session: AsyncSession, tenant_id: UUID | None = None):
         super().__init__(Campaign, session, tenant_id)
+
 
 class CampaignCallRepository(BaseRepository[CampaignCall]):
     def __init__(self, session: AsyncSession, tenant_id: UUID | None = None):

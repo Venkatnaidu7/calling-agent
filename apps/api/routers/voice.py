@@ -7,10 +7,19 @@ These routes handle:
 3. Call status callbacks - Twilio POSTs status updates
 4. Outbound call initiation - API to trigger outbound calls
 """
+
 import uuid
 import json
 import structlog
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    WebSocket,
+    WebSocketDisconnect,
+    Request,
+    Depends,
+    HTTPException,
+    status,
+)
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
@@ -18,7 +27,7 @@ from typing import Optional
 
 from apps.api.config import settings
 from apps.api.database import get_db
-from apps.api.dependencies import get_redis, get_current_user, get_tenant_context, require_roles
+from apps.api.dependencies import get_tenant_context, require_roles
 from apps.api.models.user import User
 from apps.api.repositories.agent_repo import AgentRepository, AgentVersionRepository
 from apps.api.realtime.voice_bridge import VoiceBridge
@@ -42,6 +51,7 @@ register_knowledge_tools()
 
 # === Schemas ===
 
+
 class OutboundCallRequest(BaseModel):
     agent_id: uuid.UUID
     to_number: str = Field(..., min_length=10)
@@ -64,16 +74,21 @@ async def _verify_twilio_request(request: Request, form_dict: dict) -> None:
     signature = request.headers.get("X-Twilio-Signature")
     if not signature:
         logger.warning("twilio_missing_signature", path=request.url.path)
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing Twilio signature")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Missing Twilio signature"
+        )
 
     url = str(request.url)
     provider = TwilioVoiceProvider()
     if not provider.validate_webhook_signature(url, form_dict, signature):
         logger.warning("twilio_invalid_signature", path=request.url.path)
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Twilio signature")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Twilio signature"
+        )
 
 
 # === Inbound Call Webhook ===
+
 
 @router.post("/api/v1/voice/inbound/{agent_id}")
 async def inbound_call_webhook(
@@ -110,7 +125,7 @@ async def inbound_call_webhook(
     if not agent or not agent.is_active or agent.status != "published":
         logger.warning("inbound_call_no_agent", agent_id=str(agent_id))
         return Response(
-            content='<Response><Say>We are sorry, this number is not currently accepting calls.</Say><Hangup/></Response>',
+            content="<Response><Say>We are sorry, this number is not currently accepting calls.</Say><Hangup/></Response>",
             media_type="application/xml",
         )
 
@@ -121,6 +136,7 @@ async def inbound_call_webhook(
     redis = request.app.state.redis
     if redis:
         from apps.api.realtime.session_manager import SessionManager
+
         session_manager = SessionManager(redis)
         await session_manager.create_pending_session(call_id, agent.tenant_id)
 
@@ -148,6 +164,7 @@ async def inbound_call_webhook(
 
 
 # === WebSocket Media Stream ===
+
 
 @router.websocket("/api/v1/voice/stream/{call_id}")
 async def voice_stream_websocket(
@@ -200,7 +217,12 @@ async def voice_stream_websocket(
         session_manager = SessionManager(redis)
         verified_tenant_id = await session_manager.get_pending_tenant(call_id)
         if not verified_tenant_id or verified_tenant_id != tenant_id:
-            logger.error("ws_tenant_verification_failed", call_id=call_id, provided=tenant_id, verified=verified_tenant_id)
+            logger.error(
+                "ws_tenant_verification_failed",
+                call_id=call_id,
+                provided=tenant_id,
+                verified=verified_tenant_id,
+            )
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 
@@ -226,7 +248,9 @@ async def voice_stream_websocket(
         from apps.api.database import async_session_factory
 
         async with async_session_factory() as db_session:
-            agent_repo = AgentRepository(db_session, tenant_id=uuid.UUID(tenant_id) if tenant_id else None)
+            agent_repo = AgentRepository(
+                db_session, tenant_id=uuid.UUID(tenant_id) if tenant_id else None
+            )
             agent = await agent_repo.get_by_id(uuid.UUID(agent_id) if agent_id else None)
 
             if not agent or not agent.published_version_id:
@@ -234,7 +258,9 @@ async def voice_stream_websocket(
                 await websocket.close()
                 return
 
-            version_repo = AgentVersionRepository(db_session, tenant_id=uuid.UUID(tenant_id) if tenant_id else None)
+            version_repo = AgentVersionRepository(
+                db_session, tenant_id=uuid.UUID(tenant_id) if tenant_id else None
+            )
             agent_version = await version_repo.get_by_id(agent.published_version_id)
 
             if not agent_version:
@@ -255,13 +281,16 @@ async def voice_stream_websocket(
         # SECURITY FIX: Check monthly usage limit before starting the voice bridge
         async with async_session_factory() as db_session:
             from apps.api.services.billing_service import BillingService
+
             billing_service = BillingService(db_session, uuid.UUID(tenant_id))
             if await billing_service.check_usage_limit():
                 logger.warning("monthly_usage_limit_reached", tenant_id=tenant_id)
-                await websocket.send_json({
-                    "event": "error",
-                    "message": "Monthly voice minute limit reached. Please upgrade your plan."
-                })
+                await websocket.send_json(
+                    {
+                        "event": "error",
+                        "message": "Monthly voice minute limit reached. Please upgrade your plan.",
+                    }
+                )
                 await websocket.close()
                 return
 
@@ -295,7 +324,9 @@ async def voice_stream_websocket(
         # We need to "replay" the start event since the bridge expects to handle it
         # Actually, the bridge's _handle_twilio_messages will start fresh from 'media' events
         # The start data was already consumed, so update session with stream_sid
-        await session_manager.update_session(call_id, stream_sid=stream_sid, provider_call_id=twilio_call_sid)
+        await session_manager.update_session(
+            call_id, stream_sid=stream_sid, provider_call_id=twilio_call_sid
+        )
 
         logger.info("voice_bridge_starting", call_id=call_id)
         await bridge.start()
@@ -309,6 +340,7 @@ async def voice_stream_websocket(
 
 
 # === Call Status Callback ===
+
 
 @router.post("/api/v1/voice/status/{call_id}")
 async def call_status_callback(
@@ -347,7 +379,10 @@ async def call_status_callback(
 
 # === Outbound Call API ===
 
-@router.post("/api/v1/voice/outbound", response_model=CallStatusResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/api/v1/voice/outbound", response_model=CallStatusResponse, status_code=status.HTTP_201_CREATED
+)
 async def initiate_outbound_call(
     data: OutboundCallRequest,
     request: Request,
@@ -378,6 +413,7 @@ async def initiate_outbound_call(
 
     # Verify TCPA / DNC Compliance before placing outbound call
     from apps.api.services.compliance_service import ComplianceService
+
     compliance_service = ComplianceService(db, tenant_id)
     if not await compliance_service.check_can_call(data.to_number, tenant_id):
         raise HTTPException(
@@ -401,7 +437,7 @@ async def initiate_outbound_call(
 
     # Generate TwiML for the outbound call
     twilio_provider = TwilioVoiceProvider()
-    twiml = twilio_provider.generate_stream_twiml(
+    twilio_provider.generate_stream_twiml(
         websocket_url=ws_url,
         custom_parameters={
             "call_id": call_id,
@@ -425,7 +461,7 @@ async def initiate_outbound_call(
         )
     except Exception as e:
         logger.error("outbound_call_failed", error=str(e))
-        raise HTTPException(status_code=502, detail=f"Failed to initiate call: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Failed to initiate call: {str(e)}") from e
 
     logger.info(
         "outbound_call_initiated",
@@ -444,6 +480,7 @@ async def initiate_outbound_call(
 
 # === Active Calls Management ===
 
+
 @router.get("/api/v1/voice/calls/active", response_model=list[CallStatusResponse])
 async def list_active_calls(
     request: Request,
@@ -455,18 +492,23 @@ async def list_active_calls(
     if not redis:
         return []
 
-    session_manager = SessionManager(redis)
+    SessionManager(redis)
     active_calls = []
 
     # Scan for active sessions for this tenant
-    async for key in redis.scan_iter(f"call_session:*"):
+    async for key in redis.scan_iter("call_session:*"):
         session_data = await redis.hgetall(key)
-        if session_data.get("tenant_id") == str(tenant_id) and session_data.get("state") in ("connecting", "active"):
-            active_calls.append(CallStatusResponse(
-                call_id=session_data.get("call_id", ""),
-                status=session_data.get("state", ""),
-                agent_id=session_data.get("agent_id"),
-                direction=session_data.get("direction"),
-            ))
+        if session_data.get("tenant_id") == str(tenant_id) and session_data.get("state") in (
+            "connecting",
+            "active",
+        ):
+            active_calls.append(
+                CallStatusResponse(
+                    call_id=session_data.get("call_id", ""),
+                    status=session_data.get("state", ""),
+                    agent_id=session_data.get("agent_id"),
+                    direction=session_data.get("direction"),
+                )
+            )
 
     return active_calls

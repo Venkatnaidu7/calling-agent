@@ -22,7 +22,12 @@ def get_analytics_service(
 @router.get("/dashboard", response_model=AnalyticsDashboardResponse)
 async def get_dashboard_analytics(
     service: Annotated[AnalyticsService, Depends(get_analytics_service)],
-    user: Annotated[User, Depends(require_roles("TENANT_OWNER", "TENANT_ADMIN", "SUPERVISOR", "AGENT_MANAGER", "ANALYST"))],
+    user: Annotated[
+        User,
+        Depends(
+            require_roles("TENANT_OWNER", "TENANT_ADMIN", "SUPERVISOR", "AGENT_MANAGER", "ANALYST")
+        ),
+    ],
     days: int = Query(default=30, ge=1, le=365),
     agent_id: Optional[UUID] = None,
 ):

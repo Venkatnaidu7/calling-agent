@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 
+
 class CampaignBase(BaseModel):
     name: str
     description: Optional[str] = None
@@ -18,11 +19,13 @@ class CampaignBase(BaseModel):
     scheduled_end: Optional[datetime] = None
     calling_hours_start: str = "09:00"
     calling_hours_end: str = "17:00"
-    calling_days: List[int] = Field(default_factory=lambda: [1,2,3,4,5])
+    calling_days: List[int] = Field(default_factory=lambda: [1, 2, 3, 4, 5])
     settings: Dict[str, Any] = Field(default_factory=dict)
+
 
 class CampaignCreate(CampaignBase):
     pass
+
 
 class CampaignUpdate(BaseModel):
     name: Optional[str] = None
@@ -42,6 +45,7 @@ class CampaignUpdate(BaseModel):
     calling_days: Optional[List[int]] = None
     settings: Optional[Dict[str, Any]] = None
 
+
 class CampaignResponse(CampaignBase):
     id: UUID
     tenant_id: UUID
@@ -58,14 +62,17 @@ class CampaignResponse(CampaignBase):
     class Config:
         from_attributes = True
 
+
 class CampaignCallBase(BaseModel):
     contact_id: UUID
     attempt_number: int = 1
     status: str = "pending"
     scheduled_at: Optional[datetime] = None
 
+
 class CampaignCallCreate(CampaignCallBase):
     campaign_id: UUID
+
 
 class CampaignCallUpdate(BaseModel):
     status: Optional[str] = None
@@ -75,6 +82,7 @@ class CampaignCallUpdate(BaseModel):
     completed_at: Optional[datetime] = None
     outcome: Optional[str] = None
     error_message: Optional[str] = None
+
 
 class CampaignCallResponse(CampaignCallBase):
     id: UUID

@@ -15,10 +15,11 @@ def post_call_processing_task(self, call_id: str, tenant_id: str):
     2. Calculates sentiment metrics
     3. Triggers outgoing CRM webhooks
     """
+
     async def _run():
         from apps.api.repositories.call_log_repo import CallLogRepository
         from apps.api.services.webhook_service import WebhookService
-        
+
         tenant_uuid = uuid.UUID(tenant_id)
         async with async_session_factory() as session:
             repo = CallLogRepository(session, tenant_id=tenant_uuid)
@@ -31,17 +32,20 @@ def post_call_processing_task(self, call_id: str, tenant_id: str):
 
             # Dispatch webhook event
             webhook_service = WebhookService(session, tenant_uuid)
-            await webhook_service.dispatch_event("call.analyzed", {
-                "call_id": call_id,
-                "duration": call_log.duration_seconds,
-                "sentiment": call_log.sentiment,
-            })
+            await webhook_service.dispatch_event(
+                "call.analyzed",
+                {
+                    "call_id": call_id,
+                    "duration": call_log.duration_seconds,
+                    "sentiment": call_log.sentiment,
+                },
+            )
 
     try:
         asyncio.run(_run())
     except Exception as exc:
         logger.error("post_call_processing_failed", error=str(exc), call_id=call_id)
-        raise self.retry(exc=exc, countdown=10)
+        raise self.retry(exc=exc, countdown=10) from exc
 
 
 @celery_app.task(name="tasks.process_document", bind=True, max_retries=2)
@@ -53,9 +57,10 @@ def process_document_task(self, tenant_id: str, kb_id: str, doc_id: str):
     3. Generates 1536-dim vector embeddings
     4. Inserts chunks into pgvector
     """
+
     async def _run():
         from apps.api.services.knowledge_service import KnowledgeService
-        
+
         tenant_uuid = uuid.UUID(tenant_id)
         kb_uuid = uuid.UUID(kb_id)
         doc_uuid = uuid.UUID(doc_id)
@@ -70,7 +75,7 @@ def process_document_task(self, tenant_id: str, kb_id: str, doc_id: str):
         asyncio.run(_run())
     except Exception as exc:
         logger.error("document_ingestion_failed", error=str(exc), doc_id=doc_id)
-        raise self.retry(exc=exc, countdown=30)
+        raise self.retry(exc=exc, countdown=30) from exc
 
 
 @celery_app.task(name="tasks.campaign_dialer", bind=True)
@@ -79,8 +84,10 @@ def campaign_dialer_task(self, tenant_id: str, campaign_id: str):
     Background outbound campaign dispatcher:
     Paces automated calls respecting tenant concurrency and TCPA calling windows.
     """
+
     async def _run():
         from apps.api.services.campaign_service import CampaignService
+
         tenant_uuid = uuid.UUID(tenant_id)
         campaign_uuid = uuid.UUID(campaign_id)
 

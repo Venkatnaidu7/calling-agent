@@ -13,7 +13,7 @@ class WebhookRepository(BaseRepository[WebhookEndpoint]):
     async def get_active_endpoints(self, tenant_id: UUID) -> List[WebhookEndpoint]:
         stmt = select(WebhookEndpoint).where(
             WebhookEndpoint.tenant_id == tenant_id,
-            WebhookEndpoint.is_active == True,
+            WebhookEndpoint.is_active,
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())

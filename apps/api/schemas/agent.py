@@ -6,13 +6,16 @@ from datetime import datetime
 
 # === Agent Schemas ===
 
+
 class AgentCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = None
 
+
 class AgentUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = None
+
 
 class AgentResponse(BaseModel):
     id: uuid.UUID
@@ -25,6 +28,7 @@ class AgentResponse(BaseModel):
     updated_at: datetime
     model_config = {"from_attributes": True}
 
+
 class AgentVersionSummary(BaseModel):
     id: uuid.UUID
     version_number: int
@@ -35,14 +39,17 @@ class AgentVersionSummary(BaseModel):
     created_at: datetime
     model_config = {"from_attributes": True}
 
+
 class AgentDetailResponse(AgentResponse):
     versions: list[AgentVersionSummary] = []
 
 
 # === Agent Version Schemas ===
 
+
 class AgentVersionCreate(BaseModel):
     """Create a new draft version of an agent."""
+
     name: str = Field(..., max_length=100)
     personality: Optional[str] = None
     voice: str = Field(default="ash", pattern="^(alloy|echo|shimmer|ash|ballad|coral|sage|verse)$")
@@ -62,8 +69,10 @@ class AgentVersionCreate(BaseModel):
     turn_detection_config: dict[str, Any] = {}
     loop_protection_config: dict[str, Any] = {}
 
+
 class AgentVersionUpdate(BaseModel):
     """Update a draft version."""
+
     name: Optional[str] = Field(None, max_length=100)
     personality: Optional[str] = None
     voice: Optional[str] = Field(None, pattern="^(alloy|echo|shimmer|ash|ballad|coral|sage|verse)$")
@@ -82,6 +91,7 @@ class AgentVersionUpdate(BaseModel):
     compliance_config: Optional[dict[str, Any]] = None
     turn_detection_config: Optional[dict[str, Any]] = None
     loop_protection_config: Optional[dict[str, Any]] = None
+
 
 class AgentVersionResponse(BaseModel):
     id: uuid.UUID
@@ -111,10 +121,13 @@ class AgentVersionResponse(BaseModel):
     updated_at: datetime
     model_config = {"from_attributes": True}
 
+
 # === Publishing ===
+
 
 class PublishAgentRequest(BaseModel):
     version_id: uuid.UUID
+
 
 class TestAgentRequest(BaseModel):
     version_id: uuid.UUID

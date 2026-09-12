@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime
 
+
 class ContactBase(BaseModel):
     phone_number: str
     email: Optional[EmailStr] = None
@@ -16,13 +17,16 @@ class ContactBase(BaseModel):
     status: str = "active"
     do_not_call: bool = False
 
+
 class ContactCreate(ContactBase):
     pass
+
 
 class ContactUpdate(ContactBase):
     phone_number: Optional[str] = None
     status: Optional[str] = None
     do_not_call: Optional[bool] = None
+
 
 class ContactResponse(ContactBase):
     id: UUID
@@ -35,17 +39,21 @@ class ContactResponse(ContactBase):
     class Config:
         from_attributes = True
 
+
 class ContactListBase(BaseModel):
     name: str
     description: Optional[str] = None
     is_active: bool = True
 
+
 class ContactListCreate(ContactListBase):
     pass
+
 
 class ContactListUpdate(ContactListBase):
     name: Optional[str] = None
     is_active: Optional[bool] = None
+
 
 class ContactListResponse(ContactListBase):
     id: UUID
@@ -57,11 +65,14 @@ class ContactListResponse(ContactListBase):
     class Config:
         from_attributes = True
 
+
 class ContactListMemberBase(BaseModel):
     contact_id: UUID
 
+
 class ContactListMemberCreate(ContactListMemberBase):
     pass
+
 
 class ContactListMemberResponse(ContactListMemberBase):
     id: UUID

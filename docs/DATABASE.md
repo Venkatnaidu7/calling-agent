@@ -901,11 +901,11 @@ from sqlalchemy.ext.asyncio import create_async_engine
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    pool_size=20,            # Steady-state pooled connections per worker
-    max_overflow=10,         # Maximum temporary surge connections
-    pool_timeout=30,         # Seconds to wait before timing out
-    pool_recycle=1800,       # Recycle connection every 30 minutes to prevent stale TCP sockets
-    pool_pre_ping=True,      # Validate connection liveness prior to checkout
+    pool_size=20,  # Steady-state pooled connections per worker
+    max_overflow=10,  # Maximum temporary surge connections
+    pool_timeout=30,  # Seconds to wait before timing out
+    pool_recycle=1800,  # Recycle connection every 30 minutes to prevent stale TCP sockets
+    pool_pre_ping=True,  # Validate connection liveness prior to checkout
 )
 ```
 
@@ -913,11 +913,7 @@ engine = create_async_engine(
 SQLAlchemy 2.0 async queries must explicitly load required relations using `selectinload` or `joinedload`:
 ```python
 # Prevent N+1 when fetching agent with its published version
-stmt = (
-    select(Agent)
-    .options(selectinload(Agent.current_version))
-    .where(Agent.id == agent_id)
-)
+stmt = select(Agent).options(selectinload(Agent.current_version)).where(Agent.id == agent_id)
 ```
 
 ---

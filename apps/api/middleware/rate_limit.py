@@ -5,6 +5,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from redis.asyncio import Redis
 
+
 class RateLimiter:
     def __init__(self, redis: Redis):
         self.redis = redis
@@ -13,7 +14,7 @@ class RateLimiter:
 
         current_time = time.time()
         window_start = current_time - window_seconds
-        
+
         pipeline = self.redis.pipeline()
         # Remove old requests
         pipeline.zremrangebyscore(key, 0, window_start)
@@ -23,35 +24,36 @@ class RateLimiter:
         pipeline.zcard(key)
         # Set expiry on the key to cleanup
         pipeline.expire(key, window_seconds)
-        
+
         results = await pipeline.execute()
         request_count = results[2]
-        
+
         return request_count <= limit
+
 
 def rate_limit(limit: int, window_seconds: int = 60) -> Callable:
     async def dependency(request: Request):
         redis = request.app.state.redis
         if not redis:
-            return # Skip if redis not configured
-            
+            return  # Skip if redis not configured
+
         identifier = request.client.host
-        if hasattr(request.state, 'user_id'):
+        if hasattr(request.state, "user_id"):
             identifier = str(request.state.user_id)
-            
+
         endpoint = request.url.path
         key = f"rate_limit:{identifier}:{endpoint}"
-        
+
         limiter = RateLimiter(redis)
         is_allowed = await limiter.is_allowed(key, limit, window_seconds)
-        
+
         if not is_allowed:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Rate limit exceeded",
-                headers={"Retry-After": str(window_seconds)}
+                headers={"Retry-After": str(window_seconds)},
             )
-            
+
     return dependency
 
 
@@ -72,9 +74,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         "success": False,
                         "error": {
                             "code": "RATE_LIMIT_EXCEEDED",
-                            "message": "Too many requests. Please try again later."
-                        }
+                            "message": "Too many requests. Please try again later.",
+                        },
                     },
-                    headers={"Retry-After": "60"}
+                    headers={"Retry-After": "60"},
                 )
         return await call_next(request)

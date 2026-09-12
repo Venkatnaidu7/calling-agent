@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 
@@ -44,10 +44,14 @@ class AnalyticsService:
         res = await self.session.execute(stmt)
         total_calls, total_dur, avg_dur, total_cost = res.one()
 
-        completed_stmt = select(func.count(CallLog.id)).where(and_(where_clause, CallLog.status == "completed"))
+        completed_stmt = select(func.count(CallLog.id)).where(
+            and_(where_clause, CallLog.status == "completed")
+        )
         completed_calls = (await self.session.execute(completed_stmt)).scalar_one()
 
-        failed_stmt = select(func.count(CallLog.id)).where(and_(where_clause, CallLog.status.in_(["failed", "cancelled"])))
+        failed_stmt = select(func.count(CallLog.id)).where(
+            and_(where_clause, CallLog.status.in_(["failed", "cancelled"]))
+        )
         failed_calls = (await self.session.execute(failed_stmt)).scalar_one()
 
         comp_rate = (completed_calls / total_calls * 100.0) if total_calls > 0 else 0.0
@@ -63,7 +67,11 @@ class AnalyticsService:
         )
 
         # 2. Sentiment
-        sent_stmt = select(CallLog.sentiment, func.count(CallLog.id)).where(where_clause).group_by(CallLog.sentiment)
+        sent_stmt = (
+            select(CallLog.sentiment, func.count(CallLog.id))
+            .where(where_clause)
+            .group_by(CallLog.sentiment)
+        )
         sent_res = await self.session.execute(sent_stmt)
         sent_map = {r[0]: r[1] for r in sent_res.all()}
 
@@ -75,18 +83,23 @@ class AnalyticsService:
         )
 
         # 3. Daily volume
-        date_trunc = func.date_trunc('day', CallLog.created_at)
-        daily_stmt = select(
-            date_trunc,
-            CallLog.direction,
-            func.count(CallLog.id),
-            func.coalesce(func.sum(CallLog.duration_seconds), 0),
-        ).where(where_clause).group_by(date_trunc, CallLog.direction).order_by(date_trunc.asc())
+        date_trunc = func.date_trunc("day", CallLog.created_at)
+        daily_stmt = (
+            select(
+                date_trunc,
+                CallLog.direction,
+                func.count(CallLog.id),
+                func.coalesce(func.sum(CallLog.duration_seconds), 0),
+            )
+            .where(where_clause)
+            .group_by(date_trunc, CallLog.direction)
+            .order_by(date_trunc.asc())
+        )
 
         daily_res = await self.session.execute(daily_stmt)
         day_buckets = {}
         for dt, direction, count, dur in daily_res.all():
-            day_str = dt.strftime("%Y-%m-%d") if hasattr(dt, 'strftime') else str(dt)[:10]
+            day_str = dt.strftime("%Y-%m-%d") if hasattr(dt, "strftime") else str(dt)[:10]
             if day_str not in day_buckets:
                 day_buckets[day_str] = {"inbound": 0, "outbound": 0, "dur": 0}
             if direction == "inbound":
@@ -106,12 +119,17 @@ class AnalyticsService:
         ]
 
         # 4. Agent performance
-        agent_perf_stmt = select(
-            Agent.id,
-            Agent.name,
-            func.count(CallLog.id),
-            func.coalesce(func.avg(CallLog.duration_seconds), 0.0),
-        ).join(CallLog, CallLog.agent_id == Agent.id).where(where_clause).group_by(Agent.id, Agent.name)
+        agent_perf_stmt = (
+            select(
+                Agent.id,
+                Agent.name,
+                func.count(CallLog.id),
+                func.coalesce(func.avg(CallLog.duration_seconds), 0.0),
+            )
+            .join(CallLog, CallLog.agent_id == Agent.id)
+            .where(where_clause)
+            .group_by(Agent.id, Agent.name)
+        )
 
         agent_perf_res = await self.session.execute(agent_perf_stmt)
         agent_performance = []

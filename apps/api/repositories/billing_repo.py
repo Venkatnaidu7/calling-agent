@@ -1,6 +1,6 @@
 from uuid import UUID
-from datetime import datetime, timezone
-from typing import Optional, List, Tuple
+from datetime import datetime
+from typing import Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from apps.api.models.billing import Subscription, UsageRecord
@@ -38,17 +38,21 @@ class UsageRecordRepository(BaseRepository[UsageRecord]):
         period_end: datetime,
     ) -> Tuple[int, int, dict]:
         """Returns (total_minutes, total_cost_cents, breakdown_by_metric)."""
-        stmt = select(
-            UsageRecord.metric,
-            func.coalesce(func.sum(UsageRecord.quantity), 0),
-            func.coalesce(func.sum(UsageRecord.total_cost_cents), 0),
-        ).where(
-            and_(
-                UsageRecord.tenant_id == tenant_id,
-                UsageRecord.created_at >= period_start,
-                UsageRecord.created_at <= period_end,
+        stmt = (
+            select(
+                UsageRecord.metric,
+                func.coalesce(func.sum(UsageRecord.quantity), 0),
+                func.coalesce(func.sum(UsageRecord.total_cost_cents), 0),
             )
-        ).group_by(UsageRecord.metric)
+            .where(
+                and_(
+                    UsageRecord.tenant_id == tenant_id,
+                    UsageRecord.created_at >= period_start,
+                    UsageRecord.created_at <= period_end,
+                )
+            )
+            .group_by(UsageRecord.metric)
+        )
 
         result = await self.session.execute(stmt)
         breakdown = {}

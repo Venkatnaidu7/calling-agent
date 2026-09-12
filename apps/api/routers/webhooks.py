@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from apps.api.database import get_db
 from apps.api.dependencies import get_tenant_context, require_roles
 from apps.api.models.user import User
-from apps.api.schemas.webhook import WebhookEndpointCreate, WebhookEndpointResponse, WebhookEndpointWithSecretResponse
+from apps.api.schemas.webhook import (
+    WebhookEndpointCreate,
+    WebhookEndpointResponse,
+    WebhookEndpointWithSecretResponse,
+)
 from apps.api.services.webhook_service import WebhookService
 
 router = APIRouter(prefix="/api/v1/webhooks", tags=["Webhooks & Integrations"])
@@ -28,7 +32,9 @@ async def list_webhook_endpoints(
     return await service.list_endpoints()
 
 
-@router.post("", response_model=WebhookEndpointWithSecretResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=WebhookEndpointWithSecretResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_webhook_endpoint(
     data: WebhookEndpointCreate,
     service: Annotated[WebhookService, Depends(get_webhook_service)],

@@ -1,7 +1,6 @@
 import json
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 from redis.asyncio import Redis
 import structlog
 
@@ -13,6 +12,7 @@ SESSION_TTL = 7200  # 2 hours max
 
 class CallSession:
     """Represents the state of an active voice call."""
+
     def __init__(
         self,
         call_id: str,
@@ -86,6 +86,7 @@ class CallSession:
 
 class SessionManager:
     """Manages call session state in Redis."""
+
     def __init__(self, redis: Redis):
         self.redis = redis
 
@@ -104,7 +105,7 @@ class SessionManager:
     async def create_pending_session(self, call_id: str, tenant_id: uuid.UUID) -> None:
         """Store the tenant_id for a call_id before the WebSocket connects."""
         key = f"pending_session:{call_id}"
-        await self.redis.set(key, str(tenant_id), ex=300) # 5 min TTL
+        await self.redis.set(key, str(tenant_id), ex=300)  # 5 min TTL
         logger.info("pending_session_created", call_id=call_id, tenant_id=str(tenant_id))
 
     async def get_pending_tenant(self, call_id: str) -> str | None:

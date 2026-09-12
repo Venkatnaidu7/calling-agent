@@ -5,7 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from apps.api.database import get_db
 from apps.api.dependencies import get_tenant_context, require_roles
 from apps.api.models.user import User
-from apps.api.schemas.phone_number import PhoneNumberCreate, PhoneNumberUpdate, PhoneNumberAssign, PhoneNumberResponse
+from apps.api.schemas.phone_number import (
+    PhoneNumberCreate,
+    PhoneNumberUpdate,
+    PhoneNumberAssign,
+    PhoneNumberResponse,
+)
 from apps.api.schemas.common import PaginationParams, PaginatedResponse
 from apps.api.services.phone_number_service import PhoneNumberService
 
@@ -23,7 +28,12 @@ def get_phone_service(
 async def list_phone_numbers(
     service: Annotated[PhoneNumberService, Depends(get_phone_service)],
     pagination: Annotated[PaginationParams, Depends()],
-    user: Annotated[User, Depends(require_roles("TENANT_OWNER", "TENANT_ADMIN", "AGENT_MANAGER", "ANALYST", "READ_ONLY"))],
+    user: Annotated[
+        User,
+        Depends(
+            require_roles("TENANT_OWNER", "TENANT_ADMIN", "AGENT_MANAGER", "ANALYST", "READ_ONLY")
+        ),
+    ],
 ):
     return await service.list_numbers(pagination)
 
@@ -41,7 +51,12 @@ async def provision_phone_number(
 async def get_phone_number(
     id: UUID,
     service: Annotated[PhoneNumberService, Depends(get_phone_service)],
-    user: Annotated[User, Depends(require_roles("TENANT_OWNER", "TENANT_ADMIN", "AGENT_MANAGER", "ANALYST", "READ_ONLY"))],
+    user: Annotated[
+        User,
+        Depends(
+            require_roles("TENANT_OWNER", "TENANT_ADMIN", "AGENT_MANAGER", "ANALYST", "READ_ONLY")
+        ),
+    ],
 ):
     return await service.get_number(id)
 
