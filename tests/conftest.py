@@ -15,7 +15,11 @@ from apps.api.models import Tenant, User, UserSession
 from datetime import datetime, timezone, timedelta
 
 # Use a test database
-TEST_DATABASE_URL = settings.database_url.replace('/ai_voice_platform', '/ai_voice_platform_test')
+db_url_str = str(settings.database_url)
+if db_url_str.endswith("_test"):
+    TEST_DATABASE_URL = db_url_str
+else:
+    TEST_DATABASE_URL = db_url_str.replace('/ai_voice_platform', '/ai_voice_platform_test')
 
 # Create test engine
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_pre_ping=True)
@@ -31,6 +35,7 @@ def event_loop():
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Create tables, yield session, drop tables after test."""
     async with test_engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
         await conn.run_sync(Base.metadata.create_all)
     
     async with TestSessionLocal() as session:

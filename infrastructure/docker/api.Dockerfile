@@ -17,10 +17,8 @@ WORKDIR /app
 RUN useradd -m -s /bin/bash aicalling
 USER aicalling
 
-COPY --chown=aicalling:aicalling pyproject.toml ./
-RUN pip install --user build && pip install --user -e .
-
 COPY --chown=aicalling:aicalling . .
+RUN pip install --user build && pip install --user .
 
 EXPOSE 8000
 

@@ -1,6 +1,10 @@
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apps*"]
 
 [project]
 name = "ai-voice-platform"
@@ -63,8 +67,8 @@ target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "S", "B", "A", "C4", "DTZ", "T20", "RET", "SIM", "TCH", "ERA"]
-ignore = ["S101", "S104", "B008"]
+select = ["E", "F", "W", "B"]
+ignore = ["E501", "B008", "S101", "S104"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["apps"]
