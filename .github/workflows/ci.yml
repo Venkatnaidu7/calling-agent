@@ -58,8 +58,18 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/ai_voice_platform_test
           REDIS_URL: redis://localhost:6379/0
           APP_SECRET_KEY: test-secret-key-1234567890
-          JWT_SECRET_KEY: test-jwt-secret-key-1234567890
-        run: pytest tests/ -v
+        run: |
+          python -m pytest -v --tb=short 2>&1 | tee pytest.log || {
+            echo "### ❌ Pytest Test Suite Failed" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat pytest.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
+          echo "### ✅ Pytest Test Suite Passed" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat pytest.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   build-containers:
     name: Build Docker Containers
