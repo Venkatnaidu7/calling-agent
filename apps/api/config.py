@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     # Application
     app_env: str = Field(default="development")
     app_version: str = Field(default="0.1.0")
-    app_secret_key: str = Field(...)  # Required: Must be provided via env
+    app_secret_key: str = Field(default="change-me-in-production-use-a-64-char-random-string")
     app_host: str = Field(default="0.0.0.0")
     app_port: int = Field(default=8000)
     app_debug: bool = Field(default=False)
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     celery_result_backend: str = Field(default="redis://localhost:6379/2")
 
     # JWT
-    jwt_secret_key: str = Field(...)  # Required: Must be provided via env
+    jwt_secret_key: str = Field(default="change-me-in-production-use-a-64-char-random-string")
     jwt_algorithm: str = Field(default="HS256")
     jwt_access_token_expire_minutes: int = Field(default=30)
     jwt_refresh_token_expire_days: int = Field(default=7)

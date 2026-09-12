@@ -1,7 +1,5 @@
-import asyncio
 import uuid
 from typing import AsyncGenerator
-import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -24,13 +22,6 @@ else:
 # Create test engine
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_pre_ping=True)
 TestSessionLocal = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture(scope="function")

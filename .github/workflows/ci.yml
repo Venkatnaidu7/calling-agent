@@ -58,6 +58,7 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:password@localhost:5432/ai_voice_platform_test
           REDIS_URL: redis://localhost:6379/0
           APP_SECRET_KEY: test-secret-key-1234567890
+          JWT_SECRET_KEY: test-jwt-secret-key-1234567890
         run: pytest tests/ -v
 
   build-containers:
