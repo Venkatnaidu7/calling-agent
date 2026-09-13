@@ -1,11 +1,11 @@
 # 🎙️ Aicalling: Enterprise AI Voice Agent SaaS Platform
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Platform: Production-Ready](https://img.shields.io/badge/Platform-Production--Ready-brightgreen)](https://github.com/your-repo)
 [![Security: Hardened](https://img.shields.io/badge/Security-Hardened-blue)](https://github.com/your-repo)
 [![OWASP: Verified](https://img.shields.io/badge/OWASP-API--10--Compliant-success)](https://owasp.org)
 
-A production-grade, multi-tenant SaaS platform enabling businesses to deploy autonomous AI voice employees. Aicalling delivers sub-500ms voice latency, real-time knowledge retrieval (RAG), secure tool execution, and strict TCPA/DNC regulatory compliance.
+A production-grade, multi-tenant SaaS platform enabling businesses to deploy autonomous AI voice employees. Aicalling delivers sub-500ms voice latency, real-time knowledge retrieval (RAG), secure tool[...]
 
 ---
 
@@ -44,7 +44,7 @@ The platform is hardened for enterprise multi-tenancy and verified against the *
 | **Supervisor / Analyst** | `/login` | Views live call dashboards, call transcripts, sentiment analytics, and reports. |
 
 > [!NOTE]
-> Every customer workspace is completely isolated. When Customer A logs in, all database queries automatically filter by `tenant_id = 'customer-a-id'`. It is technically impossible for one company to access another company's AI agents or call logs.
+> Every customer workspace is completely isolated. When Customer A logs in, all database queries automatically filter by `tenant_id = 'customer-a-id'`. It is technically impossible for one company[...]
 
 ---
 
@@ -208,7 +208,7 @@ docker compose exec api pytest tests/unit/test_authorization.py -v
 
 ### Running tests against isolated test containers
 
-`docker-compose.test.yml` is an override file that spins up a **separate** Postgres (port `5433`) and Redis (port `6380`) so tests never touch your dev data. It's driven by `.env.test` (already included, with placeholder secrets — do not use it for anything real).
+`docker-compose.test.yml` is an override file that spins up a **separate** Postgres (port `5433`) and Redis (port `6380`) so tests never touch your dev data. It's driven by `.env.test` (already includ[...]
 
 ```bash
 # Starts only the test postgres/redis containers, then runs pytest on the host
@@ -222,4 +222,4 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml exec api python 
 ---
 
 ## 📄 License
-Enterprise Proprietary / MIT License. See [LICENSE](LICENSE) for details.
+Apache License 2.0. See [LICENSE](LICENSE) for details.
