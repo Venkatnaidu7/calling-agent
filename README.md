@@ -107,6 +107,8 @@ podman compose exec api python scripts/create_platform_admin.py --email admin@yo
 
 ### Option B: Quickstart with Docker
 
+> Make sure you've completed [Step 1](#1-environment-configuration) (`cp .env.example .env`) first — `docker compose` will fail with an "env file not found" error if `.env` doesn't exist yet.
+
 The fastest way to launch the API, Worker, Web Dashboard, Postgres, and Redis:
 
 ```bash
@@ -122,7 +124,7 @@ docker compose ps
 Set up database tables, pgvector extensions, and PostgreSQL Row-Level Security:
 
 ```bash
-docker compose exec api alembic upgrade head
+docker compose exec api python -m alembic upgrade head
 ```
 
 ### Step 3: Create Your Master Platform Admin Account
@@ -202,6 +204,19 @@ docker compose exec api pytest tests/unit/test_tenant_isolation.py -v
 
 # Run authentication and authorization tests
 docker compose exec api pytest tests/unit/test_authorization.py -v
+```
+
+### Running tests against isolated test containers
+
+`docker-compose.test.yml` is an override file that spins up a **separate** Postgres (port `5433`) and Redis (port `6380`) so tests never touch your dev data. It's driven by `.env.test` (already included, with placeholder secrets — do not use it for anything real).
+
+```bash
+# Starts only the test postgres/redis containers, then runs pytest on the host
+make test
+
+# Or run the full stack (api + worker included) against the test DB
+docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.test.yml exec api python -m alembic upgrade head
 ```
 
 ---

@@ -1,4 +1,4 @@
-.PHONY: install dev dev-all test test-unit test-integration test-security lint format typecheck migrate migrate-create seed clean
+.PHONY: install dev dev-all test test-unit test-integration lint format typecheck migrate migrate-create clean
 
 install:
 	pip install -e ".[dev]"
@@ -13,7 +13,7 @@ dev-all:
 
 test:
 	docker compose -f docker-compose.yml -f docker-compose.test.yml up -d postgres redis
-	pytest
+	set -a && . ./.env.test && set +a && pytest
 
 test-unit:
 	pytest tests/unit
@@ -21,8 +21,9 @@ test-unit:
 test-integration:
 	pytest tests/integration
 
-test-security:
-	pytest tests/security
+# NOTE: no tests/security/ directory exists yet in this repo.
+# Add one and restore a `test-security: pytest tests/security` target
+# once security-specific tests are written.
 
 lint:
 	ruff check apps/ tests/
@@ -39,8 +40,8 @@ migrate:
 migrate-create:
 	alembic revision --autogenerate
 
-seed:
-	python scripts/seed.py
+# NOTE: scripts/seed.py does not exist yet in this repo.
+# Add it and restore a `seed: python scripts/seed.py` target once written.
 
 clean:
 	docker compose down -v

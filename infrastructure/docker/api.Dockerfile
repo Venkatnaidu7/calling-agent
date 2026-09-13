@@ -15,7 +15,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir ".[dev]"
 
 RUN useradd -m -s /bin/bash aicalling && \
     chown -R aicalling:aicalling /app
