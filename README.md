@@ -1,11 +1,14 @@
 # 🎙️ Aicalling: Enterprise AI Voice Agent SaaS Platform
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Platform: Production-Ready](https://img.shields.io/badge/Platform-Production--Ready-brightgreen)](https://github.com/your-repo)
-[![Security: Hardened](https://img.shields.io/badge/Security-Hardened-blue)](https://github.com/your-repo)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Platform: Production-Ready](https://img.shields.io/badge/Platform-Production--Ready-brightgreen)](https://github.com/Venkatnaidu7/calling-agent)
+[![Security: Hardened](https://img.shields.io/badge/Security-Hardened-blue)](https://github.com/Venkatnaidu7/calling-agent)
 [![OWASP: Verified](https://img.shields.io/badge/OWASP-API--10--Compliant-success)](https://owasp.org)
+[![Python: 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue)](https://www.python.org/)
+[![TypeScript: Latest](https://img.shields.io/badge/TypeScript-Latest-blue)](https://www.typescriptlang.org/)
+[![Docker: Ready](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://www.docker.com/)
 
-A production-grade, multi-tenant SaaS platform enabling businesses to deploy autonomous AI voice employees. Aicalling delivers sub-500ms voice latency, real-time knowledge retrieval (RAG), secure tool[...]
+A production-grade, multi-tenant SaaS platform enabling businesses to deploy autonomous AI voice employees. Aicalling delivers sub-500ms voice latency, real-time knowledge retrieval (RAG), secure t[...]
 
 ---
 
@@ -208,7 +211,7 @@ docker compose exec api pytest tests/unit/test_authorization.py -v
 
 ### Running tests against isolated test containers
 
-`docker-compose.test.yml` is an override file that spins up a **separate** Postgres (port `5433`) and Redis (port `6380`) so tests never touch your dev data. It's driven by `.env.test` (already includ[...]
+`docker-compose.test.yml` is an override file that spins up a **separate** Postgres (port `5433`) and Redis (port `6380`) so tests never touch your dev data. It's driven by `.env.test` (already i[...]
 
 ```bash
 # Starts only the test postgres/redis containers, then runs pytest on the host
@@ -222,4 +225,4 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml exec api python 
 ---
 
 ## 📄 License
-Apache License 2.0. See [LICENSE](LICENSE) for details.
+MIT License. See [LICENSE](LICENSE) for details.
