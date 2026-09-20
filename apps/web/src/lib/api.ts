@@ -309,14 +309,15 @@ export class ApiClient {
     return request(query ? `/phone-numbers?${query}` : '/phone-numbers')
   }
 
-  static async searchPhoneNumbers(params: Record<string, string | number | undefined> = {}): Promise<any> {
-    return request('/phone-numbers/search', { method: 'GET' })
+  static async searchPhoneNumbers(areaCode = ''): Promise<any> {
+    const query = areaCode.trim() ? `?area_code=${encodeURIComponent(areaCode.trim())}` : ''
+    return request(`/phone-numbers/search${query}`)
   }
 
-  static async provisionPhoneNumber(payload: any): Promise<any> {
+  static async provisionPhoneNumber(phoneNumber: string): Promise<any> {
     return request('/phone-numbers', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ phone_number: phoneNumber }),
     })
   }
 
@@ -380,6 +381,10 @@ export class ApiClient {
       method: 'POST',
       body: JSON.stringify(payload),
     })
+  }
+
+  static async clearToken(): Promise<void> {
+    this.clearTokens()
   }
 
   static async getAnalytics(days = 30): Promise<any> {
