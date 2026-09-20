@@ -250,6 +250,127 @@ export class ApiClient {
     return payload
   }
 
+  static async getKnowledgeBases(): Promise<any> {
+    return request('/knowledge-bases')
+  }
+
+  static async createKnowledgeBase(payload: {
+    name: string
+    description?: string
+    agent_id?: string
+  }): Promise<any> {
+    return request('/knowledge-bases', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  static async uploadDocument(kbId: string, formData: FormData): Promise<any> {
+    const data = formData
+    const title = formData.get('title')
+    const sourceType = formData.get('source_type')
+    const content = formData.get('content')
+
+    // The backend knowledge upload endpoint currently expects JSON metadata,
+    // not multipart/form-data. Preserve the browser API while adapting here.
+    return request(`/knowledge-bases/${encodeURIComponent(kbId)}/documents`, {
+      method: 'POST',
+      body: JSON.stringify({
+        title: typeof title === 'string' && title ? title : 'Uploaded document',
+        source_type: typeof sourceType === 'string' && sourceType ? sourceType : 'text',
+        content: typeof content === 'string' ? content : null,
+      }),
+    })
+  }
+
+  static async searchKnowledgeBase(kbId: string, query: string): Promise<any> {
+    return request(`/knowledge-bases/${encodeURIComponent(kbId)}/search`, {
+      method: 'POST',
+      body: JSON.stringify({
+        query,
+        knowledge_base_id: kbId,
+        max_results: 5,
+        min_relevance: 0.7,
+      }),
+    })
+  }
+
+  static async deleteKnowledgeBase(kbId: string): Promise<void> {
+    await request<void>(`/knowledge-bases/${encodeURIComponent(kbId)}`, {
+      method: 'DELETE',
+    })
+  }
+
+  static async getPhoneNumbers(params: Record<string, string | number | undefined> = {}): Promise<any> {
+    const query = Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+      .join('&')
+    return request(query ? `/phone-numbers?${query}` : '/phone-numbers')
+  }
+
+  static async searchPhoneNumbers(params: Record<string, string | number | undefined> = {}): Promise<any> {
+    return request('/phone-numbers/search', { method: 'GET' })
+  }
+
+  static async provisionPhoneNumber(payload: any): Promise<any> {
+    return request('/phone-numbers', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  static async releasePhoneNumber(id: string): Promise<void> {
+    await request<void>(`/phone-numbers/${encodeURIComponent(id)}/release`, {
+      method: 'POST',
+    })
+  }
+
+  static async getWebhookEndpoints(): Promise<any> {
+    return request('/webhooks')
+  }
+
+  static async createWebhookEndpoint(payload: any): Promise<any> {
+    return request('/webhooks', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  static async deleteWebhookEndpoint(id: string): Promise<void> {
+    await request<void>(`/webhooks/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    })
+  }
+
+  static async getUsers(params: Record<string, string | number | undefined> = {}): Promise<any> {
+    const query = Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+      .join('&')
+    return request(query ? `/users?${query}` : '/users')
+  }
+
+  static async inviteUser(payload: any): Promise<any> {
+    return request('/users', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  static async deleteUser(id: string): Promise<void> {
+    await request<void>(`/users/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    })
+  }
+
+  static async updateUserRole(id: string, role: string): Promise<any> {
+    return request(`/users/${encodeURIComponent(id)}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    })
+  }
+
   static async getAgents(): Promise<any> {
     return request('/agents')
   }
