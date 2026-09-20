@@ -107,6 +107,36 @@ export class ApiClient {
     })
   }
 
+  static async importDncCsv(formData: FormData): Promise<any> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    const headers = new Headers()
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+
+    const response = await fetch(`${API_BASE_URL}/compliance/dnc/import`, {
+      method: 'POST',
+      headers,
+      body: formData,
+      cache: 'no-store',
+    })
+
+    const contentType = response.headers.get('content-type') || ''
+    const payload = contentType.includes('application/json')
+      ? await response.json()
+      : await response.text()
+
+    if (!response.ok) {
+      const detail =
+        typeof payload === 'object' && payload
+          ? (payload.detail || payload.message || payload.error?.message)
+          : null
+      throw new Error(detail || `Request failed with status ${response.status}`)
+    }
+
+    return payload
+  }
+
   static async removeFromDnc(phoneNumber: string): Promise<void> {
     await request<void>(`/compliance/dnc/${encodeURIComponent(phoneNumber)}`, {
       method: 'DELETE',
