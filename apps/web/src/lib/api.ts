@@ -92,10 +92,18 @@ export class ApiClient {
     return request('/compliance/dnc')
   }
 
-  static async addDnc(phoneNumber: string, source = 'manual', reason?: string): Promise<any> {
+  static async addToDnc(payload: {
+    phone_number: string
+    reason?: string
+    source?: string
+  }): Promise<any> {
     return request('/compliance/dnc', {
       method: 'POST',
-      body: JSON.stringify({ phone_number: phoneNumber, source, reason }),
+      body: JSON.stringify({
+        phone_number: payload.phone_number,
+        reason: payload.reason,
+        source: payload.source || 'manual',
+      }),
     })
   }
 
