@@ -1,5 +1,7 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+import csv
+import io
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 
@@ -57,6 +59,39 @@ async def create_contact(
     return await service.create_contact(data)
 
 
+@router.post("/import")
+async def import_contacts(
+    file: Annotated[UploadFile, File(...)],
+    service: Annotated[ContactService, Depends(get_contact_service)],
+    user: Annotated[
+        User, Depends(require_roles(["TENANT_OWNER", "TENANT_ADMIN", "CONTACT_MANAGER"]))
+    ],
+):
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
+
+    content = await file.read()
+    try:
+        decoded = content.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=400, detail="CSV must be UTF-8 encoded") from exc
+
+    reader = csv.DictReader(io.StringIO(decoded))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV header row is required")
+
+    headers = {(name or "").strip().lower() for name in reader.fieldnames}
+    if "phone_number" not in headers and "phone" not in headers:
+        raise HTTPException(status_code=400, detail="CSV must contain a phone_number or phone column")
+
+    rows = [
+        {(key or "").strip().lower(): (value or "").strip() for key, value in row.items()}
+        for row in reader
+    ]
+    created, skipped, errors = await service.import_contacts(rows)
+    return {"created": created, "skipped": skipped, "errors": errors}
+
+
 @router.get("/{id}", response_model=ContactResponse)
 async def get_contact(
     id: UUID,
@@ -78,6 +113,17 @@ async def update_contact(
     ],
 ):
     return await service.update_contact(id, data)
+
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_contact(
+    id: UUID,
+    service: Annotated[ContactService, Depends(get_contact_service)],
+    user: Annotated[
+        User, Depends(require_roles(["TENANT_OWNER", "TENANT_ADMIN", "CONTACT_MANAGER"]))
+    ],
+):
+    await service.delete_contact(id)
 
 
 @router.post("/lists", response_model=ContactListResponse, status_code=status.HTTP_201_CREATED)
