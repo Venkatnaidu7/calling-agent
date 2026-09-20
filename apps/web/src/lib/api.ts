@@ -1,0 +1,133 @@
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '')
+
+export interface AuthResponse {
+  access_token: string
+  refresh_token?: string
+  token_type?: string
+  expires_in?: number
+}
+
+export interface RegisterPayload {
+  email: string
+  password: string
+  business_name: string
+  first_name?: string
+  last_name?: string
+}
+
+type RequestOptions = RequestInit & { auth?: boolean }
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { auth = true, headers, ...init } = options
+
+  const requestHeaders = new Headers(headers)
+  if (init.body && !requestHeaders.has('Content-Type')) {
+    requestHeaders.set('Content-Type', 'application/json')
+  }
+
+  if (auth) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    if (token) {
+      requestHeaders.set('Authorization', `Bearer ${token}`)
+    }
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: requestHeaders,
+    cache: 'no-store',
+  })
+
+  const contentType = response.headers.get('content-type') || ''
+  const payload = contentType.includes('application/json')
+    ? await response.json()
+    : await response.text()
+
+  if (!response.ok) {
+    const detail =
+      typeof payload === 'object' && payload
+        ? (payload.detail || payload.message || payload.error?.message)
+        : null
+
+    throw new Error(detail || `Request failed with status ${response.status}`)
+  }
+
+  return payload as T
+}
+
+export class ApiClient {
+  static async login(email: string, password: string): Promise<AuthResponse> {
+    return request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      auth: false,
+      body: JSON.stringify({ email, password }),
+    })
+  }
+
+  static async register(payload: RegisterPayload): Promise<AuthResponse> {
+    return request<AuthResponse>('/auth/register', {
+      method: 'POST',
+      auth: false,
+      body: JSON.stringify(payload),
+    })
+  }
+
+  static async forgotPassword(email: string): Promise<unknown> {
+    return request('/auth/forgot-password', {
+      method: 'POST',
+      auth: false,
+      body: JSON.stringify({ email }),
+    })
+  }
+
+  static async resetPassword(token: string, password: string): Promise<unknown> {
+    return request('/auth/reset-password', {
+      method: 'POST',
+      auth: false,
+      body: JSON.stringify({ token, password }),
+    })
+  }
+
+  static async getAgents(): Promise<any> {
+    return request('/agents')
+  }
+
+  static async createAgent(payload: { name: string; description?: string }): Promise<any> {
+    return request('/agents', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  static async getAnalytics(days = 30): Promise<any> {
+    return request(`/analytics/overview?days=${encodeURIComponent(days)}`)
+  }
+
+  static setToken(token: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('access_token', token)
+    }
+  }
+
+  static getToken(): string | null {
+    return typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+  }
+
+  static setRefreshToken(token: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('refresh_token', token)
+    }
+  }
+
+  static getRefreshToken(): string | null {
+    return typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null
+  }
+
+  static clearTokens(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('token')
+    }
+  }
+}
