@@ -128,11 +128,11 @@ async def update_customer(
     try:
         tenant_uuid = uuid.UUID(tenant_id_str)
         c_uuid = uuid.UUID(customer_id)
-        
+
         async with async_session_factory() as session:
             repo = ContactRepository(session, tenant_id=tenant_uuid)
             existing = await repo.get_by_id(c_uuid)
-            
+
             # SECURITY: Enforce caller identity to prevent IDOR
             allowed_numbers = [
                 _context.get("from_number") if _context else None,
@@ -140,7 +140,7 @@ async def update_customer(
             ]
             if not existing or existing.phone_number not in allowed_numbers:
                 return {"updated": False, "message": "Unauthorized: Can only update active caller's record."}
-                
+
             await repo.update(c_uuid, **updates)
             await session.commit()
             return {

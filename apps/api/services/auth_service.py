@@ -100,7 +100,7 @@ class AuthService:
         self, data: LoginRequest, ip: str = None, user_agent: str = None, redis=None
     ) -> TokenResponse:
         import asyncio
-        
+
         generic_error = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password"
         )

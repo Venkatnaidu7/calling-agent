@@ -121,11 +121,11 @@ def campaign_dialer_task(self, tenant_id: str, campaign_id: str):
             phone_repo = PhoneNumberRepository(session, tenant_uuid)
             from apps.api.repositories.contact_repo import ContactRepository
             contact_repo = ContactRepository(session, tenant_uuid)
-            
+
             campaign = await camp_repo.get_by_id(campaign_uuid)
             if not campaign or campaign.status != "running":
                 return
-            
+
             logger.info("campaign_dispatching_batch", campaign_id=campaign_id, name=campaign.name)
 
             from_number = campaign.from_number
@@ -146,7 +146,7 @@ def campaign_dialer_task(self, tenant_id: str, campaign_id: str):
 
             calls = await call_repo.get_calls_for_campaign(campaign_uuid)
             pending_calls = [c for c in calls if c.status == "pending"]
-            
+
             for call in pending_calls:
                 # Refresh campaign status check
                 campaign = await camp_repo.get_by_id(campaign_uuid)
@@ -159,7 +159,7 @@ def campaign_dialer_task(self, tenant_id: str, campaign_id: str):
                     if not contact:
                         logger.error("campaign_dialer_no_contact", call_id=call.id)
                         continue
-                        
+
                     base = settings.twilio_webhook_base_url or "https://api.example.com"
                     webhook_url = f"{base}/api/v1/voice/inbound/{campaign.agent_id}"
                     status_url = f"{base}/api/v1/voice/status/campaign_{call.id}"

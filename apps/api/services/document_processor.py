@@ -73,7 +73,7 @@ class DocumentProcessor:
                     raise ValueError("Invalid URL hostname")
 
                 safe_ip = _resolve_and_validate(parsed.hostname)
-                
+
                 port = parsed.port or (443 if parsed.scheme == "https" else 80)
                 safe_url = f"{parsed.scheme}://{safe_ip}:{port}{parsed.path or '/'}"
                 if parsed.query:
@@ -81,7 +81,7 @@ class DocumentProcessor:
 
                 headers = {"Host": parsed.hostname}
                 response = await client.get(safe_url, headers=headers, follow_redirects=False)
-                
+
                 if response.is_redirect:
                     redirect_location = response.headers.get("Location")
                     if not redirect_location:

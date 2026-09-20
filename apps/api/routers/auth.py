@@ -36,8 +36,8 @@ async def register(request: Request, data: RegisterRequest, db: AsyncSession = D
 async def login(request: Request, data: LoginRequest, db: AsyncSession = Depends(get_db)):
     auth_service = AuthService(db)
     return await auth_service.login(
-        data, 
-        ip=request.client.host if request.client else "127.0.0.1", 
+        data,
+        ip=request.client.host if request.client else "127.0.0.1",
         user_agent=request.headers.get("user-agent"),
         redis=getattr(request.app.state, "redis", None)
     )

@@ -38,7 +38,7 @@ class PlivoVoiceProvider(TelephonyProvider):
                 call_params["machine_detection"] = "true"
                 call_params["machine_detection_url"] = status_callback_url
                 call_params["machine_detection_method"] = "POST"
-            
+
             # Plivo doesn't support custom params directly in the create call method in the same way,
             # but we can pass them in the answer_url as query params.
             if custom_parameters:
@@ -85,7 +85,7 @@ class PlivoVoiceProvider(TelephonyProvider):
             dial = SubElement(response, "Dial")
             number = SubElement(dial, "Number")
             number.text = destination_number
-            
+
             twiml_str = tostring(response, encoding="unicode")
             return self.client.calls.transfer(provider_call_id, aleg_url="", aleg_method="POST", twiml=twiml_str)
 
@@ -126,11 +126,11 @@ class PlivoVoiceProvider(TelephonyProvider):
         """Generate Plivo XML for connecting a call to a media stream."""
         response = Element("Response")
         stream = SubElement(response, "Stream", url=websocket_url, bidirectional="true")
-        
+
         if custom_parameters:
             for k, v in custom_parameters.items():
                 SubElement(stream, "Parameter", name=k, value=str(v))
-                
+
         return tostring(response, encoding="unicode")
 
     def validate_webhook_signature(

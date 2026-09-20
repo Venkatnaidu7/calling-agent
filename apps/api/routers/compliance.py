@@ -41,7 +41,7 @@ async def list_dnc_entries(
 ):
     stmt = select(service.dnc_repo.model).where(
         service.dnc_repo.model.tenant_id == service.tenant_id,
-        service.dnc_repo.model.is_active == True
+        service.dnc_repo.model.is_active.is_(True)
     )
     res = await service.session.execute(stmt)
     entries = res.scalars().all()
