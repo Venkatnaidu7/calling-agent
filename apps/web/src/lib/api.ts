@@ -84,7 +84,7 @@ export class ApiClient {
     return request('/auth/reset-password', {
       method: 'POST',
       auth: false,
-      body: JSON.stringify({ token, password }),
+      body: JSON.stringify({ token, new_password: password }),
     })
   }
 
@@ -100,7 +100,7 @@ export class ApiClient {
   }
 
   static async getAnalytics(days = 30): Promise<any> {
-    return request(`/analytics/overview?days=${encodeURIComponent(days)}`)
+    return request(`/analytics/dashboard?days=${encodeURIComponent(days)}`)
   }
 
   static setToken(token: string): void {
@@ -121,6 +121,31 @@ export class ApiClient {
 
   static getRefreshToken(): string | null {
     return typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null
+  }
+
+  static async getSubscription(): Promise<any> {
+    return request('/billing/subscription')
+  }
+
+  static async getBillingUsage(): Promise<any> {
+    return request('/billing/usage')
+  }
+
+  static async getBillingPlans(): Promise<any> {
+    return request('/billing/plans', { auth: false })
+  }
+
+  static async createCheckoutSession(payload: any): Promise<any> {
+    return request('/billing/checkout', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  static async openBillingPortal(returnUrl: string): Promise<any> {
+    return request('/billing/portal?return_url=' + encodeURIComponent(returnUrl), {
+      method: 'POST',
+    })
   }
 
   static clearTokens(): void {
