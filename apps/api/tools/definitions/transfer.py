@@ -79,14 +79,14 @@ async def create_callback(
         preferred_time=preferred_time,
         reason=reason,
     )
-    
+
     try:
         from apps.api.database import async_session_factory
         from apps.api.repositories.contact_repo import ContactRepository
         import uuid
-        
+
         tenant_id = _context.get("tenant_id") if _context else None
-        
+
         if tenant_id:
             async with async_session_factory() as session:
                 repo = ContactRepository(session, uuid.UUID(tenant_id))
@@ -101,7 +101,7 @@ async def create_callback(
     except Exception as e:
         logger.error("create_callback_failed", error=str(e))
         return {"callback_scheduled": False, "error": "Internal error scheduling callback"}
-        
+
     return {"callback_scheduled": True, "message": "Callback scheduled successfully"}
 
 
