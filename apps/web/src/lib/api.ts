@@ -88,6 +88,22 @@ export class ApiClient {
     })
   }
 
+  static async getCalls(params: Record<string, string | number | undefined> = {}): Promise<any> {
+    const query = Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+      .join('&')
+    return request(query ? `/calls?${query}` : '/calls')
+  }
+
+  static async getCall(callId: string): Promise<any> {
+    return request(`/calls/${encodeURIComponent(callId)}`)
+  }
+
+  static async getCallTranscript(callId: string): Promise<any> {
+    return request(`/calls/${encodeURIComponent(callId)}/transcript`)
+  }
+
   static async getAgents(): Promise<any> {
     return request('/agents')
   }
