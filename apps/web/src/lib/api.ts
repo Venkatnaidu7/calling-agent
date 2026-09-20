@@ -189,6 +189,67 @@ export class ApiClient {
     })
   }
 
+  static async getContacts(params: Record<string, string | number | undefined> = {}): Promise<any> {
+    const query = Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+      .join('&')
+    return request(query ? `/contacts?${query}` : '/contacts')
+  }
+
+  static async createContact(payload: {
+    phone_number: string
+    email?: string
+    first_name?: string
+    last_name?: string
+    company?: string
+    timezone?: string
+    tags?: string[]
+    custom_fields?: Record<string, unknown>
+    notes?: string
+    status?: string
+    do_not_call?: boolean
+  }): Promise<any> {
+    return request('/contacts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  static async deleteContact(contactId: string): Promise<void> {
+    await request<void>(`/contacts/${encodeURIComponent(contactId)}`, {
+      method: 'DELETE',
+    })
+  }
+
+  static async importContactsCsv(formData: FormData): Promise<any> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    const headers = new Headers()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+
+    const response = await fetch(`${API_BASE_URL}/contacts/import`, {
+      method: 'POST',
+      headers,
+      body: formData,
+      cache: 'no-store',
+    })
+
+    const contentType = response.headers.get('content-type') || ''
+    const payload = contentType.includes('application/json')
+      ? await response.json()
+      : await response.text()
+
+    if (!response.ok) {
+      const detail =
+        typeof payload === 'object' && payload
+          ? (payload.detail || payload.message || payload.error?.message)
+          : null
+      throw new Error(detail || `Request failed with status ${response.status}`)
+    }
+
+    return payload
+  }
+
   static async getAgents(): Promise<any> {
     return request('/agents')
   }
