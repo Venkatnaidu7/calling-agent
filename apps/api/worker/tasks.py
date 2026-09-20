@@ -107,7 +107,9 @@ def campaign_dialer_task(self, tenant_id: str, campaign_id: str):
 
     async def _run():
         from apps.api.repositories.campaign_repo import CampaignRepository, CampaignCallRepository
-        from twilio.rest import Client
+        from apps.api.repositories.phone_number_repo import PhoneNumberRepository
+        from apps.api.providers.twilio.voice import TwilioVoiceProvider
+        from apps.api.providers.plivo.voice import PlivoVoiceProvider
         from apps.api.config import settings
 
         tenant_uuid = uuid.UUID(tenant_id)
@@ -116,21 +118,36 @@ def campaign_dialer_task(self, tenant_id: str, campaign_id: str):
         async with async_session_factory() as session:
             camp_repo = CampaignRepository(session, tenant_uuid)
             call_repo = CampaignCallRepository(session, tenant_uuid)
+            phone_repo = PhoneNumberRepository(session, tenant_uuid)
+            
             campaign = await camp_repo.get_by_id(campaign_uuid)
-
             if not campaign or campaign.status != "running":
                 return
-
+            
             logger.info("campaign_dispatching_batch", campaign_id=campaign_id, name=campaign.name)
 
-            if not settings.twilio_account_sid:
-                logger.warning("twilio_not_configured_for_campaign", campaign_id=campaign_id)
+            phone_number_obj = await phone_repo.get_by_id(campaign.phone_number_id)
+            if not phone_number_obj:
+                logger.error("campaign_dialer_no_phone", campaign_id=campaign_id)
                 return
+
+            from_number = phone_number_obj.phone_number
+            provider_name = phone_number_obj.provider.lower()
+
+            if provider_name == "plivo":
+                if not settings.plivo_auth_id:
+                    logger.warning("plivo_not_configured_for_campaign", campaign_id=campaign_id)
+                    return
+                provider = PlivoVoiceProvider()
+            else:
+                if not settings.twilio_account_sid:
+                    logger.warning("twilio_not_configured_for_campaign", campaign_id=campaign_id)
+                    return
+                provider = TwilioVoiceProvider()
 
             calls = await call_repo.get_calls_for_campaign(campaign_uuid)
             pending_calls = [c for c in calls if c.status == "pending"]
-            client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
-
+            
             for call in pending_calls:
                 # Refresh campaign status check
                 campaign = await camp_repo.get_by_id(campaign_uuid)
@@ -139,12 +156,16 @@ def campaign_dialer_task(self, tenant_id: str, campaign_id: str):
                     break
 
                 try:
-                    # In a real setup, Twilio points back to the outbound webhook endpoint
-                    twiml = f'<Response><Connect><Stream url="{settings.twilio_webhook_base_url or "wss://api.example.com"}/api/v1/voice/ws/outbound?call_id={call.id}" /></Connect></Response>'
-                    client.calls.create(
-                        to=call.phone_number,
-                        from_="+18005550000",  # In a real app, use campaign.phone_number
-                        twiml=twiml
+                    base = settings.twilio_webhook_base_url or "https://api.example.com"
+                    webhook_url = f"{base}/api/v1/voice/inbound/{campaign.agent_id}"
+                    status_url = f"{base}/api/v1/voice/status/campaign_{call.id}"
+
+                    await provider.initiate_outbound_call(
+                        to_number=call.phone_number,
+                        from_number=from_number,
+                        webhook_url=webhook_url,
+                        status_callback_url=status_url,
+                        machine_detection=True
                     )
                     await call_repo.update(call.id, status="dialing")
                     await session.commit()

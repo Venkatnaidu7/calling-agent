@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     twilio_auth_token: str = Field(default="")
     twilio_webhook_base_url: str = Field(default="")
 
+    # Plivo
+    plivo_auth_id: str = Field(default="")
+    plivo_auth_token: str = Field(default="")
+
     # Stripe
     stripe_secret_key: str = Field(default="")
     stripe_webhook_secret: str = Field(default="")

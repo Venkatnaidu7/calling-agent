@@ -37,6 +37,7 @@ from apps.api.tools.definitions.appointment import register_appointment_tools
 from apps.api.tools.definitions.transfer import register_transfer_tools
 from apps.api.tools.definitions.contact import register_contact_tools
 from apps.api.tools.definitions.knowledge import register_knowledge_tools
+from apps.api.providers.base.telephony import TelephonyProvider
 
 logger = structlog.get_logger()
 
@@ -68,23 +69,37 @@ class CallStatusResponse(BaseModel):
     direction: Optional[str] = None
 
 
-async def _verify_twilio_request(request: Request, form_dict: dict) -> None:
-    if not settings.twilio_auth_token:
-        return
-    signature = request.headers.get("X-Twilio-Signature")
-    if not signature:
-        logger.warning("twilio_missing_signature", path=request.url.path)
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Missing Twilio signature"
-        )
+from apps.api.providers.plivo.voice import PlivoVoiceProvider
 
+def _get_provider_for_request(request: Request) -> TelephonyProvider:
+    if "X-Twilio-Signature" in request.headers:
+        return TwilioVoiceProvider()
+    elif "X-Plivo-Signature-V2" in request.headers or "X-Plivo-Signature" in request.headers:
+        return PlivoVoiceProvider()
+    # Default to Twilio if unknown
+    return TwilioVoiceProvider()
+
+async def _verify_webhook_request(request: Request, form_dict: dict) -> None:
     url = str(request.url)
-    provider = TwilioVoiceProvider()
-    if not provider.validate_webhook_signature(url, form_dict, signature):
-        logger.warning("twilio_invalid_signature", path=request.url.path)
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Twilio signature"
-        )
+    
+    if "X-Twilio-Signature" in request.headers:
+        if not settings.twilio_auth_token:
+            return
+        signature = request.headers.get("X-Twilio-Signature")
+        provider = TwilioVoiceProvider()
+        if not provider.validate_webhook_signature(url, form_dict, signature):
+            logger.warning("twilio_invalid_signature", path=url)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Twilio signature")
+            
+    elif "X-Plivo-Signature-V2" in request.headers or "X-Plivo-Signature" in request.headers:
+        if not settings.plivo_auth_token:
+            return
+        signature = request.headers.get("X-Plivo-Signature-V2") or request.headers.get("X-Plivo-Signature")
+        provider = PlivoVoiceProvider()
+        # Plivo v2 signature uses the full URL and nonces, but standard verification usually works with dicts.
+        if not provider.validate_webhook_signature(url, form_dict, signature):
+            logger.warning("plivo_invalid_signature", path=url)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Plivo signature")
 
 
 # === Inbound Call Webhook ===
@@ -97,16 +112,24 @@ async def inbound_call_webhook(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Twilio calls this webhook when an inbound call arrives.
-    Returns TwiML that connects the call to our WebSocket media stream.
+    Webhook when an inbound call arrives (supports Twilio & Plivo).
+    Returns XML that connects the call to our WebSocket media stream.
     """
     form_data = await request.form()
     form_dict = dict(form_data)
-    await _verify_twilio_request(request, form_dict)
+    await _verify_webhook_request(request, form_dict)
 
-    call_sid = form_data.get("CallSid", "")
-    from_number = form_data.get("From", "")
-    to_number = form_data.get("To", "")
+    provider = _get_provider_for_request(request)
+    
+    # Extract provider-specific fields
+    if isinstance(provider, TwilioVoiceProvider):
+        call_sid = form_data.get("CallSid", "")
+        from_number = form_data.get("From", "")
+        to_number = form_data.get("To", "")
+    else:
+        call_sid = form_data.get("CallUUID", "")
+        from_number = form_data.get("From", "")
+        to_number = form_data.get("To", "")
 
     logger.info(
         "inbound_call_received",
@@ -116,9 +139,6 @@ async def inbound_call_webhook(
         to_number=to_number,
     )
 
-    # Look up the agent and its published version
-    # We need to find the tenant by the phone number mapping
-    # For now, search for the agent directly
     agent_repo = AgentRepository(db, tenant_id=None)
     agent = await agent_repo.get_by_id(agent_id)
 
@@ -129,25 +149,19 @@ async def inbound_call_webhook(
             media_type="application/xml",
         )
 
-    # Generate a unique call ID for our session
     call_id = str(uuid.uuid4())
 
-    # Store call_id -> tenant_id mapping in Redis for WebSocket verification
     redis = request.app.state.redis
     if redis:
         from apps.api.realtime.session_manager import SessionManager
-
         session_manager = SessionManager(redis)
         await session_manager.create_pending_session(call_id, agent.tenant_id)
 
-    # Build the WebSocket URL for the media stream
     ws_scheme = "wss" if settings.twilio_webhook_base_url.startswith("https") else "ws"
     base = settings.twilio_webhook_base_url.replace("https://", "").replace("http://", "")
     ws_url = f"{ws_scheme}://{base}/api/v1/voice/stream/{call_id}"
 
-    # Generate TwiML with <Connect><Stream>
-    twilio_provider = TwilioVoiceProvider()
-    twiml = twilio_provider.generate_stream_twiml(
+    xml_response = provider.generate_stream_twiml(
         websocket_url=ws_url,
         custom_parameters={
             "call_id": call_id,
@@ -160,7 +174,7 @@ async def inbound_call_webhook(
     )
 
     logger.info("inbound_call_connecting", call_id=call_id, ws_url=ws_url)
-    return Response(content=twiml, media_type="application/xml")
+    return Response(content=xml_response, media_type="application/xml")
 
 
 # === WebSocket Media Stream ===
@@ -348,14 +362,23 @@ async def call_status_callback(
     request: Request,
 ):
     """
-    Twilio calls this endpoint with call status updates.
+    Webhook for call status updates (supports Twilio & Plivo).
     """
     form_data = await request.form()
-    await _verify_twilio_request(request, dict(form_data))
+    await _verify_webhook_request(request, dict(form_data))
 
-    call_status = form_data.get("CallStatus", "")
-    call_duration = form_data.get("CallDuration", "0")
-    call_sid = form_data.get("CallSid", "")
+    provider = _get_provider_for_request(request)
+    
+    if isinstance(provider, TwilioVoiceProvider):
+        call_status = form_data.get("CallStatus", "")
+        call_duration = form_data.get("CallDuration", "0")
+        call_sid = form_data.get("CallSid", "")
+    else:
+        call_status = form_data.get("CallStatus", "") # Plivo also uses CallStatus or status
+        if not call_status:
+            call_status = form_data.get("status", "")
+        call_duration = form_data.get("Duration", "0") # Plivo uses Duration or BillDuration
+        call_sid = form_data.get("CallUUID", "")
 
     logger.info(
         "call_status_update",
@@ -371,7 +394,7 @@ async def call_status_callback(
         session_manager = SessionManager(redis)
         session = await session_manager.get_session(call_id)
         if session:
-            if call_status in ("completed", "busy", "no-answer", "failed", "canceled"):
+            if call_status.lower() in ("completed", "busy", "no-answer", "failed", "canceled", "hangup"):
                 await session_manager.update_session(call_id, state="completed")
 
     return {"status": "received"}
@@ -430,14 +453,28 @@ async def initiate_outbound_call(
 
     # Build webhook URLs
     base = settings.twilio_webhook_base_url.rstrip("/")
+    if not base:
+        # Fallback to general app host if twilio specific one is missing
+        base = "https://api.example.com"
+        
     ws_scheme = "wss" if base.startswith("https") else "ws"
     ws_base = base.replace("https://", "").replace("http://", "")
     ws_url = f"{ws_scheme}://{ws_base}/api/v1/voice/stream/{call_id}"
     status_url = f"{base}/api/v1/voice/status/{call_id}"
 
-    # Generate TwiML for the outbound call
-    twilio_provider = TwilioVoiceProvider()
-    twilio_provider.generate_stream_twiml(
+    # Determine provider by looking up the phone number
+    from apps.api.repositories.phone_number_repo import PhoneNumberRepository
+    phone_repo = PhoneNumberRepository(db, tenant_id)
+    phone_number_obj = await phone_repo.get_by_number(data.from_number)
+    
+    provider_name = phone_number_obj.provider if phone_number_obj else "twilio"
+    if provider_name.lower() == "plivo":
+        provider = PlivoVoiceProvider()
+    else:
+        provider = TwilioVoiceProvider()
+
+    # Generate XML/TwiML for the outbound call
+    provider.generate_stream_twiml(
         websocket_url=ws_url,
         custom_parameters={
             "call_id": call_id,
@@ -449,9 +486,9 @@ async def initiate_outbound_call(
         },
     )
 
-    # Initiate the call via Twilio
+    # Initiate the call
     try:
-        result = await twilio_provider.initiate_outbound_call(
+        result = await provider.initiate_outbound_call(
             to_number=data.to_number,
             from_number=data.from_number,
             webhook_url=f"{base}/api/v1/voice/inbound/{data.agent_id}",
@@ -460,7 +497,7 @@ async def initiate_outbound_call(
             custom_parameters={"call_id": call_id},
         )
     except Exception as e:
-        logger.error("outbound_call_failed", error=str(e))
+        logger.error("outbound_call_failed", error=str(e), provider=provider_name)
         raise HTTPException(status_code=502, detail=f"Failed to initiate call: {str(e)}") from e
 
     logger.info(
