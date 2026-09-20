@@ -88,6 +88,23 @@ export class ApiClient {
     })
   }
 
+  static async getDncList(): Promise<any> {
+    return request('/compliance/dnc')
+  }
+
+  static async addDnc(phoneNumber: string, source = 'manual', reason?: string): Promise<any> {
+    return request('/compliance/dnc', {
+      method: 'POST',
+      body: JSON.stringify({ phone_number: phoneNumber, source, reason }),
+    })
+  }
+
+  static async removeDnc(phoneNumber: string): Promise<void> {
+    await request<void>(`/compliance/dnc/${encodeURIComponent(phoneNumber)}`, {
+      method: 'DELETE',
+    })
+  }
+
   static async getCalls(params: Record<string, string | number | undefined> = {}): Promise<any> {
     const query = Object.entries(params)
       .filter(([, value]) => value !== undefined && value !== null && value !== '')
