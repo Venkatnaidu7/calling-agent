@@ -153,7 +153,6 @@ async def inbound_call_webhook(
 
     redis = request.app.state.redis
     if redis:
-        from apps.api.realtime.session_manager import SessionManager
         session_manager = SessionManager(redis)
         await session_manager.create_pending_session(call_id, agent.tenant_id)
 

@@ -13,6 +13,8 @@ from apps.api.utils.crypto import (
     create_access_token,
     create_refresh_token,
     hash_token,
+    check_needs_rehash,
+    generate_secure_token,
 )
 from apps.api.config import settings
 
@@ -98,7 +100,6 @@ class AuthService:
         self, data: LoginRequest, ip: str = None, user_agent: str = None, redis=None
     ) -> TokenResponse:
         import asyncio
-        from apps.api.utils.crypto import check_needs_rehash, hash_password
         
         generic_error = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password"
@@ -129,7 +130,6 @@ class AuthService:
                     await redis.delete(attempts_key)
                     if user:
                         from apps.api.services.email_service import EmailService
-                        from apps.api.utils.crypto import generate_secure_token, hash_token
                         raw_token = generate_secure_token(32)
                         hashed = hash_token(raw_token)
                         await redis.set(f"pwd_reset:{hashed}", str(user.id), ex=900)
