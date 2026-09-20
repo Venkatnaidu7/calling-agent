@@ -86,37 +86,59 @@ Edit `.env` and fill in your credentials:
 
 ## 🚀 Quickstart Deployment Guide
 
-### Option A: Quickstart with Podman on Linux (Recommended for Rootless)
+### Option A: Complete Podman Setup for Linux (Recommended)
 
 Podman is highly recommended for running Aicalling on Linux due to its daemonless, rootless architecture and native integration with systemd.
 
-**Step 1: Automated Setup**
-We provide a dedicated bash script that handles environment preparation, permission fixes for rootless volume mounting, and container orchestration:
+**Step 1: Install Podman and Podman-Compose**
+Depending on your Linux distribution, install Podman and Podman-Compose:
+* **Ubuntu/Debian:** `sudo apt-get update && sudo apt-get install -y podman podman-compose`
+* **Fedora/RHEL:** `sudo dnf install -y podman podman-compose`
+* **Arch Linux:** `sudo pacman -S podman podman-compose`
 
+**Step 2: Environment Configuration**
+Copy the example environment file to `.env` and fill in your credentials:
+```bash
+cp .env.example .env
+```
+*(Make sure to add your essential API keys to the `.env` file as described in the Environment Configuration section).*
+
+**Step 3: Automated Setup & Launch**
+We provide a dedicated bash script that handles environment preparation, permission fixes for rootless volume mounting, and container orchestration:
 ```bash
 chmod +x setup-podman.sh
 ./setup-podman.sh
 ```
+*(Alternatively, you can manually run `podman-compose up -d --build`).*
 
-*(Alternatively, you can manually run `podman-compose up -d --build` or `podman compose up -d --build`).*
-
-**Step 2: Apply Database Schema & Migrations**
+**Step 4: Apply Database Schema & Migrations**
 Set up the tables, `pgvector` extensions, and PostgreSQL Row-Level Security:
 ```bash
 podman-compose exec api python -m alembic upgrade head
 ```
 
-**Step 3: Create Your Master Platform Admin**
+**Step 5: Create Your Master Platform Admin**
 Provision your private root `PLATFORM_ADMIN` super-user to manage the platform:
 ```bash
 podman-compose exec api python scripts/create_platform_admin.py --email admin@yourcompany.com --password "YourStrongPassword"
 ```
 
+**Step 6: Access the Platform**
+* **Web Dashboard:** `http://localhost:3000`
+* **API Documentation (Swagger):** `http://localhost:8000/api/docs`
+* **Health Check:** `http://localhost:8000/health`
+
+**Troubleshooting Podman on Linux**
+* **Permission denied on volumes:** If Postgres or Redis containers crash due to permission issues, ensure your user namespace mappings are correct or run `podman unshare chown -R $UID:$UID ./path/to/volume` on mounted directories.
+* **Network resolution issues (containers can't talk to each other):** Ensure the `podman-plugins` (like `dnsname`) package is installed for internal container DNS resolution. Run `podman network reload -a`.
+* **Container Exits Instantly (Code 137/OOM):** Ensure your Linux machine has sufficient memory (at least 4GB RAM) for the `pgvector` database and API service.
+* **`podman-compose` not found:** Make sure your `PATH` includes the installation directory for Python packages (e.g., `~/.local/bin`) if installed via pip.
+
 ---
 
 ### Option B: Quickstart with Docker Desktop (macOS & Windows)
 
-> Make sure you've completed [Step 1](#1-environment-configuration) (`cp .env.example .env`) first — `docker compose` will fail with an "env file not found" error if `.env` doesn't exist yet.
+> Make sure you've completed `cp .env.example .env` first — `docker compose` will fail with an "env file not found" error if `.env` doesn't exist yet.
 
 This is the recommended path for developers running macOS (Apple Silicon or Intel) or Windows 10/11. 
 
