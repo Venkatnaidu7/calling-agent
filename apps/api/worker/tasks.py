@@ -119,6 +119,8 @@ def campaign_dialer_task(self, tenant_id: str, campaign_id: str):
             camp_repo = CampaignRepository(session, tenant_uuid)
             call_repo = CampaignCallRepository(session, tenant_uuid)
             phone_repo = PhoneNumberRepository(session, tenant_uuid)
+            from apps.api.repositories.contact_repo import ContactRepository
+            contact_repo = ContactRepository(session, tenant_uuid)
             
             campaign = await camp_repo.get_by_id(campaign_uuid)
             if not campaign or campaign.status != "running":
@@ -126,13 +128,10 @@ def campaign_dialer_task(self, tenant_id: str, campaign_id: str):
             
             logger.info("campaign_dispatching_batch", campaign_id=campaign_id, name=campaign.name)
 
-            phone_number_obj = await phone_repo.get_by_id(campaign.phone_number_id)
-            if not phone_number_obj:
-                logger.error("campaign_dialer_no_phone", campaign_id=campaign_id)
-                return
+            from_number = campaign.from_number
+            phone_number_obj = await phone_repo.get_by_number(from_number)
 
-            from_number = phone_number_obj.phone_number
-            provider_name = phone_number_obj.provider.lower()
+            provider_name = phone_number_obj.provider.lower() if phone_number_obj else "twilio"
 
             if provider_name == "plivo":
                 if not settings.plivo_auth_id:
@@ -156,12 +155,17 @@ def campaign_dialer_task(self, tenant_id: str, campaign_id: str):
                     break
 
                 try:
+                    contact = await contact_repo.get_by_id(call.contact_id)
+                    if not contact:
+                        logger.error("campaign_dialer_no_contact", call_id=call.id)
+                        continue
+                        
                     base = settings.twilio_webhook_base_url or "https://api.example.com"
                     webhook_url = f"{base}/api/v1/voice/inbound/{campaign.agent_id}"
                     status_url = f"{base}/api/v1/voice/status/campaign_{call.id}"
 
                     await provider.initiate_outbound_call(
-                        to_number=call.phone_number,
+                        to_number=contact.phone_number,
                         from_number=from_number,
                         webhook_url=webhook_url,
                         status_callback_url=status_url,
