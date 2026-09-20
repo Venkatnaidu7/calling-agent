@@ -76,7 +76,8 @@ cp .env.example .env
 Edit `.env` and fill in your credentials:
 * **OpenAI:** `OPENAI_API_KEY` (Required for Realtime Voice & Embeddings)
 * **Twilio:** `TWILIO_ACCOUNT_SID` & `TWILIO_AUTH_TOKEN` (For voice calls & SMS)
-* **Twilio Webhook:** `TWILIO_WEBHOOK_BASE_URL` (Your public domain or ngrok tunnel)
+* **Plivo:** `PLIVO_AUTH_ID` & `PLIVO_AUTH_TOKEN` (Alternative/additional provider for voice calls)
+* **Webhook Base URL:** `TWILIO_WEBHOOK_BASE_URL` (Used for BOTH Twilio and Plivo webhook routing; must be your public domain or ngrok tunnel)
 * **Stripe:** `STRIPE_SECRET_KEY` & `STRIPE_WEBHOOK_SECRET` (For subscriptions/billing)
 * **SendGrid:** `SENDGRID_API_KEY` (Optional for transactional emails; falls back to dev logging)
 * **Application Secrets:** `APP_SECRET_KEY` & `JWT_SECRET_KEY` (Pre-generated 64-character secure strings)
@@ -163,8 +164,8 @@ docker compose exec api python scripts/create_platform_admin.py --email admin@yo
 
 ## 📞 Telephony & AI Live Setup
 
-### 1. Public Exposure for Twilio Webhooks
-Twilio requires a public HTTPS/WSS endpoint to stream audio.
+### 1. Public Exposure for Webhooks
+Both Twilio and Plivo require a public HTTPS/WSS endpoint to stream audio and send call status events.
 
 * **For Local Development (ngrok):**
   ```bash
@@ -176,12 +177,22 @@ Twilio requires a public HTTPS/WSS endpoint to stream audio.
   Point your live domain with SSL (e.g. `https://api.yourcompany.com`) to your server via Nginx, Caddy, or Cloudflare with WebSocket upgrade headers enabled.
 
 ### 2. Configure Twilio Phone Number
-1. Log in to [Twilio Console](https://console.twilio.com) $\rightarrow$ **Phone Numbers** $\rightarrow$ **Active Numbers**.
+1. Log in to [Twilio Console](https://console.twilio.com) -> **Phone Numbers** -> **Active Numbers**.
 2. Select your number and scroll to **Voice Configuration**.
 3. Under **A CALL COMES IN**, select `Webhook`:
    * **URL:** `https://<your-domain>/api/v1/voice/inbound/<agent-uuid>`
    * **HTTP Method:** `HTTP POST`
-4. Save the configuration. Your AI voice agent is now live and accepting calls!
+4. Save the configuration.
+
+### 3. Configure Plivo Phone Number
+1. Log in to the [Plivo Console](https://console.plivo.com).
+2. Go to **Voice** -> **Applications** and create a new XML Application.
+3. Set the **Answer URL**:
+   * **URL:** `https://<your-domain>/api/v1/voice/inbound/<agent-uuid>`
+   * **Method:** `POST`
+4. Assign this application to your active Plivo phone number.
+
+Your AI voice agent is now live and dynamically accepts calls from both Twilio and Plivo!
 
 ---
 
@@ -208,6 +219,14 @@ python -m celery -A apps.api.worker.celery_app worker --loglevel=info
 * **Email Service:** `EmailService` automatically detects SendGrid credentials:
   * In **Production**, it delivers branded HTML emails via the SendGrid API.
   * In **Development**, it safely logs rich email previews to console without failing or requiring third-party credentials.
+
+## 🔒 Security & Auth Configuration
+
+Aicalling implements robust enterprise-grade security for authentication:
+* **Brute-force Protection:** Accounts are automatically locked for 15 minutes after 5 consecutive failed login attempts. This state is tracked securely via Redis.
+* **Input Sanitization:** All authentication and profile inputs are sanitized to strip out potential HTML/XSS payloads.
+* **Generic Error Masking:** Invalid login attempts purposefully return a generic `"Incorrect email or password"` to prevent user enumeration attacks.
+* **Bcrypt Cost Factors:** Uses dynamic rounds of Bcrypt hashing for password storage.
 
 ---
 
