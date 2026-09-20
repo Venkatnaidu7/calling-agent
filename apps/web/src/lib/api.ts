@@ -107,10 +107,14 @@ export class ApiClient {
     })
   }
 
-  static async removeDnc(phoneNumber: string): Promise<void> {
+  static async removeFromDnc(phoneNumber: string): Promise<void> {
     await request<void>(`/compliance/dnc/${encodeURIComponent(phoneNumber)}`, {
       method: 'DELETE',
     })
+  }
+
+  static async removeDnc(phoneNumber: string): Promise<void> {
+    return this.removeFromDnc(phoneNumber)
   }
 
   static async getCalls(params: Record<string, string | number | undefined> = {}): Promise<any> {
