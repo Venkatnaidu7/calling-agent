@@ -182,6 +182,20 @@ docker compose exec api python scripts/create_platform_admin.py --email admin@yo
 * **API Documentation (Swagger):** `http://localhost:8000/api/docs`
 * **Health Check:** `http://localhost:8000/health`
 
+### Managing the Server (Start & Stop)
+
+**To Stop the Server:**
+* **Docker:** Run `docker compose down` in your terminal. This safely stops and removes the containers while preserving your database data.
+* **Podman:** Run `podman-compose down`.
+
+**To Start the Server:**
+* **Docker:** Run `docker compose up -d` to spin up the server in the background.
+* **Podman:** Run `podman-compose up -d`.
+
+**To View Live Logs:**
+* **Docker:** `docker compose logs -f`
+* **Podman:** `podman-compose logs -f`
+
 ---
 
 ## 📞 Telephony & AI Live Setup
