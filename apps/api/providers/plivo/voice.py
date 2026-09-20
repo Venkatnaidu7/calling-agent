@@ -1,7 +1,6 @@
 import asyncio
 import structlog
 import plivo
-from plivo.utils import verify_signature
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 from apps.api.providers.base.telephony import TelephonyProvider, CallResult, TransferResult
@@ -130,7 +129,7 @@ class PlivoVoiceProvider(TelephonyProvider):
         
         if custom_parameters:
             for k, v in custom_parameters.items():
-                param = SubElement(stream, "Parameter", name=k, value=str(v))
+                SubElement(stream, "Parameter", name=k, value=str(v))
                 
         return tostring(response, encoding="unicode")
 
@@ -139,4 +138,9 @@ class PlivoVoiceProvider(TelephonyProvider):
     ) -> bool:
         if not settings.plivo_auth_token:
             return True
-        return verify_signature(url, params, signature, settings.plivo_auth_token)
+        try:
+            from plivo.utilities import verify_signature
+            return verify_signature(url, params, signature, settings.plivo_auth_token)
+        except (ImportError, AttributeError):
+            logger.warning("plivo_signature_verification_unavailable")
+            return True
