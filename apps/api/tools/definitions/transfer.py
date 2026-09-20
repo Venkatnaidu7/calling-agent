@@ -31,6 +31,12 @@ async def send_sms(to_number: str, message: str, _context: dict = None, **kwargs
 
     logger.info("send_sms_requested", to_number=to_number, message_preview=message[:20])
 
+    # SECURITY: Prevent toll fraud by only allowing SMS to the active caller
+    caller_number = _context.get("from_number") if _context else None
+    if caller_number and to_number != caller_number:
+        logger.warning("sms_toll_fraud_prevented", attempted_number=to_number, allowed=caller_number)
+        return {"sent": False, "error": "Can only send SMS to the active caller's phone number."}
+
     if not settings.twilio_account_sid or not settings.twilio_auth_token:
         logger.warning("twilio_not_configured_sms_mocked")
         return {"sent": True, "mock": True, "message": "SMS recorded (Twilio credentials not set)"}
@@ -73,6 +79,29 @@ async def create_callback(
         preferred_time=preferred_time,
         reason=reason,
     )
+    
+    try:
+        from apps.api.database import async_session_factory
+        from apps.api.repositories.contact_repo import ContactRepository
+        import uuid
+        
+        tenant_id = _context.get("tenant_id") if _context else None
+        
+        if tenant_id:
+            async with async_session_factory() as session:
+                repo = ContactRepository(session, uuid.UUID(tenant_id))
+                contact = await repo.get_by_phone(phone_number)
+                if contact:
+                    callbacks = contact.custom_fields.get("callbacks", []) if contact.custom_fields else []
+                    callbacks.append({"time": preferred_time, "reason": reason})
+                    custom_fields = contact.custom_fields or {}
+                    custom_fields["callbacks"] = callbacks
+                    await repo.update(contact.id, custom_fields=custom_fields)
+                    await session.commit()
+    except Exception as e:
+        logger.error("create_callback_failed", error=str(e))
+        return {"callback_scheduled": False, "error": "Internal error scheduling callback"}
+        
     return {"callback_scheduled": True, "message": "Callback scheduled successfully"}
 
 

@@ -30,6 +30,9 @@ export default function RegisterPage() {
         last_name: lastName || undefined,
       })
       ApiClient.setToken(res.access_token)
+      if (res.refresh_token) {
+        ApiClient.setRefreshToken(res.refresh_token)
+      }
       router.push('/dashboard')
     } catch (err: any) {
       setError(err.message || 'Registration failed.')

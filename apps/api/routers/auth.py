@@ -36,7 +36,10 @@ async def register(request: Request, data: RegisterRequest, db: AsyncSession = D
 async def login(request: Request, data: LoginRequest, db: AsyncSession = Depends(get_db)):
     auth_service = AuthService(db)
     return await auth_service.login(
-        data, ip=request.client.host, user_agent=request.headers.get("user-agent")
+        data, 
+        ip=request.client.host if request.client else "127.0.0.1", 
+        user_agent=request.headers.get("user-agent"),
+        redis=getattr(request.app.state, "redis", None)
     )
 
 
@@ -155,7 +158,7 @@ async def forgot_password(
         await email_service.send_password_reset_email(user.email, raw_token)
         logger.info("password_reset_initiated", email=data.email)
 
-    return {"message": "If an account exists with that email, a password reset link has been sent."}
+    return {"message": "If that email is registered, you'll receive a reset link"}
 
 
 @router.post(
@@ -200,7 +203,7 @@ async def reset_password(
 
     if not user or not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found or inactive."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired password reset token."
         )
 
     # Update password

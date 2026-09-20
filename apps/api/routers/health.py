@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from apps.api.database import get_db
@@ -37,4 +38,7 @@ async def readiness(request: Request, db: AsyncSession = Depends(get_db)):
         status_code = 503
 
     status_msg = "ready" if status_code == 200 else "unready"
-    return {"status": status_msg, "checks": checks}
+    return JSONResponse(
+        status_code=status_code,
+        content={"status": status_msg, "checks": checks},
+    )

@@ -14,31 +14,9 @@ export default function DashboardPage() {
       try {
         const res = await ApiClient.getAnalytics(30)
         setData(res)
-      } catch (e) {
-        // Fallback demo data if backend not active
-        setData({
-          overview: {
-            total_calls: 142,
-            completed_calls: 128,
-            failed_calls: 14,
-            completion_rate_percent: 90.1,
-            total_duration_minutes: 480.5,
-            avg_duration_seconds: 203.2,
-            estimated_cost_dollars: 24.03,
-          },
-          sentiment: {
-            positive: 94,
-            neutral: 38,
-            negative: 10,
-            unknown: 0,
-          },
-          daily_volume: [
-            { date: '2026-09-05', inbound_count: 24, outbound_count: 12, total_minutes: 95.2 },
-            { date: '2026-09-06', inbound_count: 30, outbound_count: 18, total_minutes: 112.4 },
-            { date: '2026-09-07', inbound_count: 22, outbound_count: 14, total_minutes: 84.1 },
-            { date: '2026-09-08', inbound_count: 35, outbound_count: 20, total_minutes: 138.8 },
-          ],
-        })
+      } catch (e: any) {
+        console.error('Failed to load dashboard analytics:', e)
+        setData(null)
       } finally {
         setLoading(false)
       }

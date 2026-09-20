@@ -316,15 +316,39 @@ class VoiceBridge:
         await self.session_manager.update_session(
             self.call_session.call_id, transfer_status="initiated"
         )
+        target_number = data.get("phone_number")
+        if target_number and settings.twilio_account_sid and self.call_session.provider_call_id:
+            def _transfer():
+                from twilio.rest import Client
+                client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
+                twiml = f'<Response><Dial>{target_number}</Dial></Response>'
+                client.calls(self.call_session.provider_call_id).update(twiml=twiml)
+            import asyncio
+            await asyncio.to_thread(_transfer)
 
     async def _handle_call_end(self, data: dict):
         """Handle graceful call end."""
         logger.info("ending_call", call_id=self.call_session.call_id, reason=data.get("reason"))
         self.is_active = False
+        if settings.twilio_account_sid and self.call_session.provider_call_id:
+            def _end():
+                from twilio.rest import Client
+                client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
+                client.calls(self.call_session.provider_call_id).update(status="completed")
+            import asyncio
+            await asyncio.to_thread(_end)
 
     async def _send_fallback_to_twilio(self):
         """Send a fallback message if AI fails during a call."""
         logger.warning("sending_fallback", call_id=self.call_session.call_id)
+        if settings.twilio_account_sid and self.call_session.provider_call_id:
+            def _fallback():
+                from twilio.rest import Client
+                client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
+                twiml = '<Response><Say>We are experiencing technical difficulties. Please try again later.</Say><Hangup/></Response>'
+                client.calls(self.call_session.provider_call_id).update(twiml=twiml)
+            import asyncio
+            await asyncio.to_thread(_fallback)
 
     async def _cleanup(self):
         """Clean up resources when the call ends, persist call logs & usage."""
@@ -341,6 +365,11 @@ class VoiceBridge:
             await self.session_manager.update_session(
                 self.call_session.call_id,
                 state="completed",
+            )
+            # CRITICAL: Remove from tenant active sessions to avoid concurrency lockout
+            await self.session_manager.delete_session(
+                self.call_session.call_id,
+                tenant_id=self.call_session.tenant_id,
             )
         except Exception as e:
             logger.error("session_update_error", error=str(e))
@@ -425,5 +454,11 @@ class VoiceBridge:
                 )
         except Exception as e:
             logger.error("call_persistence_error", call_id=self.call_session.call_id, error=str(e))
+            
+        try:
+            from apps.api.worker.tasks import post_call_processing_task
+            post_call_processing_task.delay(self.call_session.call_id, self.call_session.tenant_id)
+        except Exception as e:
+            logger.error("celery_dispatch_failed", error=str(e))
 
         logger.info("voice_bridge_cleanup_complete", call_id=self.call_session.call_id)

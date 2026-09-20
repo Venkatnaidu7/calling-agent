@@ -50,7 +50,9 @@ async def create_knowledge_base(
 
 @router.get("/{kb_id}", response_model=KnowledgeBaseResponse)
 async def get_knowledge_base(
-    kb_id: uuid.UUID, service: KnowledgeService = Depends(get_knowledge_service)
+    kb_id: uuid.UUID,
+    service: KnowledgeService = Depends(get_knowledge_service),
+    _=Depends(require_permissions("view_all")),
 ):
     return await service.get_knowledge_base(kb_id)
 
@@ -80,6 +82,7 @@ async def list_documents(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     service: KnowledgeService = Depends(get_knowledge_service),
+    _=Depends(require_permissions("view_all")),
 ):
     return await service.list_documents(kb_id, skip=skip, limit=limit)
 
@@ -98,7 +101,10 @@ async def upload_document(
 
 @router.get("/{kb_id}/documents/{doc_id}", response_model=DocumentResponse)
 async def get_document(
-    kb_id: uuid.UUID, doc_id: uuid.UUID, service: KnowledgeService = Depends(get_knowledge_service)
+    kb_id: uuid.UUID,
+    doc_id: uuid.UUID,
+    service: KnowledgeService = Depends(get_knowledge_service),
+    _=Depends(require_permissions("view_all")),
 ):
     return await service.get_document(kb_id, doc_id)
 
@@ -128,6 +134,7 @@ async def search_knowledge_base(
     kb_id: uuid.UUID,
     data: SearchRequest,
     service: KnowledgeService = Depends(get_knowledge_service),
+    _=Depends(require_permissions("view_all")),
 ):
     if kb_id != data.knowledge_base_id:
         raise HTTPException(

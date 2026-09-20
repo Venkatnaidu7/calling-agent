@@ -13,14 +13,9 @@ export default function BillingPage() {
       try {
         const res = await ApiClient.getSubscription()
         setSub(res)
-      } catch (e) {
-        setSub({
-          plan_tier: 'starter',
-          status: 'active',
-          monthly_minute_limit: 500,
-          minutes_used_this_period: 182,
-          concurrency_limit: 2,
-        })
+      } catch (e: any) {
+        console.error('Failed to load subscription:', e)
+        setSub(null)
       } finally {
         setLoading(false)
       }

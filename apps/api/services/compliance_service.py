@@ -2,7 +2,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from datetime import datetime, time, timezone
-import pytz
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from apps.api.models.compliance import DNCEntry, ConsentRecord
 from apps.api.repositories.compliance_repo import DNCRepository, ConsentRepository
 
@@ -67,9 +67,9 @@ class ComplianceService:
         self, contact_timezone: str, start_time_str: str, end_time_str: str
     ) -> bool:
         try:
-            tz = pytz.timezone(contact_timezone)
-        except pytz.UnknownTimeZoneError:
-            tz = pytz.UTC
+            tz = ZoneInfo(contact_timezone)
+        except ZoneInfoNotFoundError:
+            tz = timezone.utc
 
         now = datetime.now(tz).time()
 

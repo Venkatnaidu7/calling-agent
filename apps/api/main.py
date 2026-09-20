@@ -49,6 +49,22 @@ def create_app() -> FastAPI:
     )
 
     # Exception Handlers
+    from fastapi.exceptions import RequestValidationError
+    
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        if request.url.path.startswith("/api/v1/auth/login") or request.url.path.startswith("/api/v1/auth/register"):
+            logger.warning("auth_validation_failed", errors=exc.errors(), path=request.url.path)
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Invalid input provided."}
+            )
+        # Default behavior for other routes
+        return JSONResponse(
+            status_code=422,
+            content={"detail": exc.errors()}
+        )
+
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         logger.error("Unhandled exception", exc_info=exc, path=request.url.path)
@@ -91,6 +107,13 @@ def create_app() -> FastAPI:
     app.include_router(billing.router)
     app.include_router(analytics.router)
     app.include_router(webhooks.router)
+
+    # Prometheus metrics
+    try:
+        from prometheus_fastapi_instrumentator import Instrumentator
+        Instrumentator().instrument(app).expose(app)
+    except ImportError:
+        logger.warning("prometheus_fastapi_instrumentator not installed, /metrics endpoint unavailable")
 
     return app
 

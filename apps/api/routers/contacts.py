@@ -14,7 +14,7 @@ from apps.api.schemas.contact import (
     ContactListMemberCreate,
     ContactListMemberResponse,
 )
-from apps.api.schemas.common import PaginationParams
+from apps.api.schemas.common import PaginationParams, PaginatedResponse
 from apps.api.services.contact_service import ContactService
 from apps.api.models.user import User
 
@@ -28,7 +28,7 @@ def get_contact_service(
     return ContactService(session, tenant_id)
 
 
-@router.get("", response_model=list[ContactResponse])
+@router.get("", response_model=PaginatedResponse[ContactResponse])
 async def list_contacts(
     service: Annotated[ContactService, Depends(get_contact_service)],
     pagination: Annotated[PaginationParams, Depends()],
@@ -37,7 +37,13 @@ async def list_contacts(
     ],
 ):
     items, total = await service.list_contacts(pagination)
-    return items
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        page=pagination.page,
+        per_page=pagination.per_page,
+        pages=(total + pagination.per_page - 1) // pagination.per_page if pagination.per_page else 1,
+    )
 
 
 @router.post("", response_model=ContactResponse, status_code=status.HTTP_201_CREATED)

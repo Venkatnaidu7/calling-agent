@@ -21,6 +21,9 @@ export default function LoginPage() {
     try {
       const res = await ApiClient.login(email, password)
       ApiClient.setToken(res.access_token)
+      if (res.refresh_token) {
+        ApiClient.setRefreshToken(res.refresh_token)
+      }
       router.push('/dashboard')
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials.')
@@ -91,11 +94,16 @@ export default function LoginPage() {
             {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Sign In <ArrowRight className="h-4 w-4" /></>}
           </button>
 
-          <div className="text-center text-sm text-slate-600">
-            Don&apos;t have an account?{' '}
-            <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-              Create an account
+          <div className="flex items-center justify-between text-sm text-slate-600">
+            <Link href="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">
+              Forgot password?
             </Link>
+            <span>
+              Don&apos;t have an account?{' '}
+              <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+                Create an account
+              </Link>
+            </span>
           </div>
         </form>
       </div>

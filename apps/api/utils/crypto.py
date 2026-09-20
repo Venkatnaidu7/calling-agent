@@ -6,8 +6,12 @@ from jose import jwt, JWTError
 
 from apps.api.config import settings
 
-# Configure Argon2
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+# Configure bcrypt with cost factor 12
+pwd_context = CryptContext(
+    schemes=["bcrypt", "argon2", "md5", "sha1", "plaintext"],
+    deprecated=["argon2", "md5", "sha1", "plaintext"],
+    bcrypt__rounds=12,
+)
 
 
 def hash_password(password: str) -> str:
@@ -15,7 +19,12 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, hash: str) -> bool:
+    # Use constant time comparison inside passlib.verify
     return pwd_context.verify(password, hash)
+
+
+def check_needs_rehash(hash: str) -> bool:
+    return pwd_context.needs_update(hash)
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:

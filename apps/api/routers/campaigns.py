@@ -12,9 +12,10 @@ from apps.api.schemas.campaign import (
     CampaignCallCreate,
     CampaignCallResponse,
 )
-from apps.api.schemas.common import PaginationParams
+from apps.api.schemas.common import PaginationParams, PaginatedResponse
 from apps.api.services.campaign_service import CampaignService
 from apps.api.models.user import User
+from apps.api.worker.tasks import campaign_dialer_task
 
 router = APIRouter(prefix="/api/v1/campaigns", tags=["campaigns"])
 
@@ -26,7 +27,7 @@ def get_campaign_service(
     return CampaignService(session, tenant_id)
 
 
-@router.get("", response_model=list[CampaignResponse])
+@router.get("", response_model=PaginatedResponse[CampaignResponse])
 async def list_campaigns(
     service: Annotated[CampaignService, Depends(get_campaign_service)],
     pagination: Annotated[PaginationParams, Depends()],
@@ -35,7 +36,13 @@ async def list_campaigns(
     ],
 ):
     items, total = await service.list_campaigns(pagination)
-    return items
+    return PaginatedResponse(
+        items=items,
+        total=total,
+        page=pagination.page,
+        per_page=pagination.per_page,
+        pages=(total + pagination.per_page - 1) // pagination.per_page if pagination.per_page else 1,
+    )
 
 
 @router.post("", response_model=CampaignResponse, status_code=status.HTTP_201_CREATED)
@@ -46,7 +53,10 @@ async def create_campaign(
         User, Depends(require_roles(["TENANT_OWNER", "TENANT_ADMIN", "CAMPAIGN_MANAGER"]))
     ],
 ):
-    return await service.create_campaign(data)
+    campaign = await service.create_campaign(data)
+    if campaign.status == "running":
+        campaign_dialer_task.delay(str(service.tenant_id), str(campaign.id))
+    return campaign
 
 
 @router.get("/{id}", response_model=CampaignResponse)
@@ -69,7 +79,10 @@ async def update_campaign(
         User, Depends(require_roles(["TENANT_OWNER", "TENANT_ADMIN", "CAMPAIGN_MANAGER"]))
     ],
 ):
-    return await service.update_campaign(id, data)
+    campaign = await service.update_campaign(id, data)
+    if campaign.status == "running":
+        campaign_dialer_task.delay(str(service.tenant_id), str(campaign.id))
+    return campaign
 
 
 @router.post("/calls", response_model=CampaignCallResponse, status_code=status.HTTP_201_CREATED)

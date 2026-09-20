@@ -53,7 +53,8 @@ class BaseRepository(Generic[ModelType]):
         return items, total
 
     async def create(self, **kwargs) -> ModelType:
-        if self.tenant_id and hasattr(self.model, "tenant_id") and "tenant_id" not in kwargs:
+        # SECURITY: Always enforce tenant_id to prevent isolation bypass
+        if self.tenant_id and hasattr(self.model, "tenant_id"):
             kwargs["tenant_id"] = self.tenant_id
 
         instance = self.model(**kwargs)
@@ -63,6 +64,9 @@ class BaseRepository(Generic[ModelType]):
         return instance
 
     async def update(self, id: UUID | str, **kwargs) -> ModelType | None:
+        # SECURITY: Never allow tenant_id modification to prevent cross-tenant migration
+        kwargs.pop("tenant_id", None)
+
         stmt = update(self.model).where(self.model.id == id)
         stmt = self._apply_tenant_filter(stmt)
         stmt = stmt.values(**kwargs).returning(self.model)

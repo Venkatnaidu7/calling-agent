@@ -31,7 +31,7 @@ class AuthService:
         existing_user = await self.user_repo.get_by_email_global(data.email)
         if existing_user:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Registration cannot be completed with the provided information"
             )
 
         # Create tenant
@@ -95,24 +95,62 @@ class AuthService:
         )
 
     async def login(
-        self, data: LoginRequest, ip: str = None, user_agent: str = None
+        self, data: LoginRequest, ip: str = None, user_agent: str = None, redis=None
     ) -> TokenResponse:
+        import asyncio
+        from apps.api.utils.crypto import check_needs_rehash, hash_password
+        
+        generic_error = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password"
+        )
+
+        lockout_key = f"auth:lockout:{data.email}"
+        attempts_key = f"auth:attempts:{data.email}"
+
+        if redis:
+            is_locked = await redis.get(lockout_key)
+            if is_locked:
+                raise generic_error
+
         user = await self.user_repo.get_by_email_global(data.email)
+
+        # Constant time logic or progressive delay
         if not user or not verify_password(data.password, user.password_hash):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
-            )
+            if redis:
+                attempts = await redis.incr(attempts_key)
+                if attempts == 1:
+                    await redis.expire(attempts_key, 900)  # 15 minutes window
+
+                # Progressive delay
+                await asyncio.sleep(min(attempts * 0.5, 3.0))
+
+                if attempts >= 5:
+                    await redis.set(lockout_key, "1", ex=900)  # 15 mins lockout
+                    await redis.delete(attempts_key)
+                    if user:
+                        from apps.api.services.email_service import EmailService
+                        from apps.api.utils.crypto import generate_secure_token, hash_token
+                        raw_token = generate_secure_token(32)
+                        hashed = hash_token(raw_token)
+                        await redis.set(f"pwd_reset:{hashed}", str(user.id), ex=900)
+                        await EmailService().send_password_reset_email(user.email, raw_token)
+            raise generic_error
 
         if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
-            )
+            raise generic_error
 
         tenant = await self.tenant_repo.get_by_id(user.tenant_id)
         if not tenant or tenant.status != "active":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Tenant account is not active"
-            )
+            raise generic_error
+
+        if redis:
+            await redis.delete(attempts_key)
+            await redis.delete(lockout_key)
+
+        # Migration: Rehash legacy passwords on next login
+        if check_needs_rehash(user.password_hash):
+            user.password_hash = hash_password(data.password)
+            await self.user_repo.update(user.id, password_hash=user.password_hash)
 
         # Update last login
         await self.user_repo.update(user.id, last_login_at=datetime.now(timezone.utc))

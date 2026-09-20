@@ -116,10 +116,54 @@ async def cancel_appointment(
 ) -> dict[str, Any]:
     """Cancel an existing appointment in the database."""
     logger.info("cancelling_appointment", appointment_id=appointment_id, reason=reason)
+    
+    tenant_id_str = _context.get("tenant_id") if _context else None
+    actual_caller_phone = _context.get("from_number") if _context else None
+    
+    if tenant_id_str and actual_caller_phone:
+        try:
+            import uuid
+            from apps.api.database import async_session_factory
+            from apps.api.repositories.contact_repo import ContactRepository
+            
+            tenant_uuid = uuid.UUID(tenant_id_str)
+            async with async_session_factory() as session:
+                repo = ContactRepository(session, tenant_id=tenant_uuid)
+                contact = await repo.get_by_phone(actual_caller_phone)
+                
+                if contact and contact.custom_fields and "appointments" in contact.custom_fields:
+                    appts = contact.custom_fields["appointments"]
+                    updated = False
+                    for appt in appts:
+                        if appt.get("id") == appointment_id:
+                            appt["status"] = "cancelled"
+                            appt["cancellation_reason"] = reason
+                            updated = True
+                            break
+                            
+                    if updated:
+                        c_fields = dict(contact.custom_fields)
+                        c_fields["appointments"] = appts
+                        await repo.update(contact.id, custom_fields=c_fields)
+                        await session.commit()
+                        logger.info("appointment_cancelled_in_db", appointment_id=appointment_id)
+                        return {
+                            "cancelled": True,
+                            "appointment_id": appointment_id,
+                            "message": f"Appointment {appointment_id} has been cancelled.",
+                        }
+                    else:
+                        return {
+                            "cancelled": False,
+                            "error": "Appointment not found for this caller."
+                        }
+        except Exception as e:
+            logger.error("appointment_cancellation_error", error=str(e))
+            return {"cancelled": False, "error": "Internal database error"}
+
     return {
-        "cancelled": True,
-        "appointment_id": appointment_id,
-        "message": f"Appointment {appointment_id} has been cancelled.",
+        "cancelled": False,
+        "error": "Could not identify caller context to cancel appointment."
     }
 
 

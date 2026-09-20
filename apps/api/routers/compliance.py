@@ -1,6 +1,7 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import Annotated
 
 from apps.api.database import get_db
@@ -29,6 +30,22 @@ def get_compliance_service(
 class ImportDNCRequest(BaseModel):
     phone_numbers: List[str]
     source: str = "imported"
+
+
+@router.get("/dnc")
+async def list_dnc_entries(
+    service: Annotated[ComplianceService, Depends(get_compliance_service)],
+    user: Annotated[
+        User, Depends(require_roles(["TENANT_OWNER", "TENANT_ADMIN", "COMPLIANCE_MANAGER"]))
+    ],
+):
+    stmt = select(service.dnc_repo.model).where(
+        service.dnc_repo.model.tenant_id == service.tenant_id,
+        service.dnc_repo.model.is_active == True
+    )
+    res = await service.session.execute(stmt)
+    entries = res.scalars().all()
+    return entries
 
 
 @router.get("/dnc/{phone_number}")

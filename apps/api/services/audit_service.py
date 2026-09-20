@@ -58,6 +58,7 @@ class AuditService:
                 for i in items
             ],
             total=total,
-            skip=pagination.skip,
-            limit=pagination.limit,
+            page=pagination.page,
+            per_page=pagination.per_page,
+            pages=(total + pagination.per_page - 1) // pagination.per_page if pagination.per_page else 1,
         )

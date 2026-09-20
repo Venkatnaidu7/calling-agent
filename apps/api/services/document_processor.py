@@ -33,9 +33,10 @@ class DocumentProcessor:
         import ipaddress
         from urllib.parse import urlparse, urljoin
 
-        def _validate_ip(hostname: str) -> None:
+        def _resolve_and_validate(hostname: str) -> str:
             try:
-                addr_info = socket.getaddrinfo(hostname, None)
+                addr_info = socket.getaddrinfo(hostname, None, socket.AF_INET)
+                safe_ip = None
                 for entry in addr_info:
                     raw_ip = entry[4][0]
                     ip = ipaddress.ip_address(raw_ip)
@@ -49,6 +50,10 @@ class DocumentProcessor:
                         raise ValueError(
                             f"Access to internal network addresses is prohibited: {raw_ip}"
                         )
+                    safe_ip = raw_ip
+                if not safe_ip:
+                    raise ValueError(f"No IPv4 address found for {hostname}")
+                return safe_ip
             except socket.gaierror as err:
                 raise ValueError(f"Could not resolve hostname: {hostname}") from err
 
@@ -56,7 +61,8 @@ class DocumentProcessor:
         max_redirects = 3
         response = None
 
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        # verify=False is needed because we connect directly to the IP address, causing hostname mismatch
+        async with httpx.AsyncClient(timeout=15.0, verify=False) as client:
             for _ in range(max_redirects + 1):
                 parsed = urlparse(current_url)
                 if parsed.scheme not in ("http", "https"):
@@ -66,9 +72,16 @@ class DocumentProcessor:
                 if not parsed.hostname:
                     raise ValueError("Invalid URL hostname")
 
-                _validate_ip(parsed.hostname)
+                safe_ip = _resolve_and_validate(parsed.hostname)
+                
+                port = parsed.port or (443 if parsed.scheme == "https" else 80)
+                safe_url = f"{parsed.scheme}://{safe_ip}:{port}{parsed.path or '/'}"
+                if parsed.query:
+                    safe_url += f"?{parsed.query}"
 
-                response = await client.get(current_url, follow_redirects=False)
+                headers = {"Host": parsed.hostname}
+                response = await client.get(safe_url, headers=headers, follow_redirects=False)
+                
                 if response.is_redirect:
                     redirect_location = response.headers.get("Location")
                     if not redirect_location:

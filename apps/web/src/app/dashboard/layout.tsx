@@ -13,16 +13,20 @@ import {
   CreditCard,
   Settings,
   LogOut,
+  Shield,
 } from 'lucide-react'
 import { ApiClient } from '@/lib/api'
 
 const navItems = [
   { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
   { label: 'AI Agents', href: '/dashboard/agents', icon: Bot },
+  { label: 'Phone Numbers', href: '/dashboard/phone-numbers', icon: PhoneCall },
   { label: 'Call Logs', href: '/dashboard/calls', icon: History },
   { label: 'Campaigns', href: '/dashboard/campaigns', icon: Megaphone },
   { label: 'Contacts', href: '/dashboard/contacts', icon: Users },
   { label: 'Knowledge Base', href: '/dashboard/knowledge', icon: Database },
+  { label: 'Compliance', href: '/dashboard/compliance', icon: Shield }, 
+  { label: 'Users', href: '/dashboard/users', icon: Users },
   { label: 'Billing', href: '/dashboard/billing', icon: CreditCard },
   { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]

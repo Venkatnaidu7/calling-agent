@@ -37,7 +37,7 @@ def rate_limit(limit: int, window_seconds: int = 60) -> Callable:
         if not redis:
             return  # Skip if redis not configured
 
-        identifier = request.client.host
+        identifier = request.client.host if request.client else "127.0.0.1"
         if hasattr(request.state, "user_id"):
             identifier = str(request.state.user_id)
 

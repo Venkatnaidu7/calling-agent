@@ -118,6 +118,7 @@ class AnalyticsService:
             for d, v in sorted(day_buckets.items())
         ]
 
+        import sqlalchemy
         # 4. Agent performance
         agent_perf_stmt = (
             select(
@@ -125,6 +126,12 @@ class AnalyticsService:
                 Agent.name,
                 func.count(CallLog.id),
                 func.coalesce(func.avg(CallLog.duration_seconds), 0.0),
+                func.coalesce(
+                    func.sum(
+                        func.cast(CallLog.sentiment == "positive", sqlalchemy.Integer)
+                    ),
+                    0,
+                ),
             )
             .join(CallLog, CallLog.agent_id == Agent.id)
             .where(where_clause)
@@ -134,12 +141,7 @@ class AnalyticsService:
         agent_perf_res = await self.session.execute(agent_perf_stmt)
         agent_performance = []
 
-        for aid, aname, acalls, aavg in agent_perf_res.all():
-            # calculate positive sentiment
-            pos_stmt = select(func.count(CallLog.id)).where(
-                and_(where_clause, CallLog.agent_id == aid, CallLog.sentiment == "positive")
-            )
-            pos_count = (await self.session.execute(pos_stmt)).scalar_one()
+        for aid, aname, acalls, aavg, pos_count in agent_perf_res.all():
             pos_pct = (pos_count / acalls * 100.0) if acalls > 0 else 0.0
 
             agent_performance.append(

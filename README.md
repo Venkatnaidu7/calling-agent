@@ -85,33 +85,50 @@ Edit `.env` and fill in your credentials:
 
 ## 🚀 Quickstart Deployment Guide
 
-### Option A: Quickstart with Podman (Linux / Rootless)
+### Option A: Quickstart with Podman on Linux (Recommended for Rootless)
 
-You can run the automated launcher script:
+Podman is highly recommended for running Aicalling on Linux due to its daemonless, rootless architecture and native integration with systemd.
+
+**Step 1: Automated Setup**
+We provide a dedicated bash script that handles environment preparation, permission fixes for rootless volume mounting, and container orchestration:
+
 ```bash
-chmod +x scripts/quickstart-podman.sh
-./scripts/quickstart-podman.sh
+chmod +x setup-podman.sh
+./setup-podman.sh
 ```
 
-Or run the commands manually:
+*(Alternatively, you can manually run `podman-compose up -d --build` or `podman compose up -d --build`).*
+
+**Step 2: Apply Database Schema & Migrations**
+Set up the tables, `pgvector` extensions, and PostgreSQL Row-Level Security:
 ```bash
-# 1. Build and start containers in the background
-podman compose up -d --build
-# (or: podman-compose up -d --build)
+podman-compose exec api python -m alembic upgrade head
+```
 
-# 2. Apply database migrations
-podman compose exec api python -m alembic upgrade head
-
-# 3. Create your Master Platform Admin
-podman compose exec api python scripts/create_platform_admin.py --email admin@yourcompany.com --password "YourStrongPassword"
+**Step 3: Create Your Master Platform Admin**
+Provision your private root `PLATFORM_ADMIN` super-user to manage the platform:
+```bash
+podman-compose exec api python scripts/create_platform_admin.py --email admin@yourcompany.com --password "YourStrongPassword"
 ```
 
 ---
 
-### Option B: Quickstart with Docker
+### Option B: Quickstart with Docker Desktop (macOS & Windows)
 
 > Make sure you've completed [Step 1](#1-environment-configuration) (`cp .env.example .env`) first — `docker compose` will fail with an "env file not found" error if `.env` doesn't exist yet.
 
+This is the recommended path for developers running macOS (Apple Silicon or Intel) or Windows 10/11. 
+
+**Pre-requisites for Windows Users:**
+* Install **Docker Desktop for Windows**.
+* Ensure the **WSL 2 backend** is enabled in Docker Desktop settings.
+* Run all commands from **PowerShell** or **Windows Terminal**.
+
+**Pre-requisites for macOS Users:**
+* Install **Docker Desktop for Mac** (or OrbStack).
+* *Apple Silicon (M1/M2/M3) users:* The Postgres pgvector image handles `linux/arm64` natively, but ensure Docker Desktop has at least 4GB of RAM allocated.
+
+**Step 1: Build and Launch Containers**
 The fastest way to launch the API, Worker, Web Dashboard, Postgres, and Redis:
 
 ```bash

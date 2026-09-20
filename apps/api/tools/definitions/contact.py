@@ -16,6 +16,15 @@ async def get_customer(phone_number: str, _context: dict = None, **kwargs) -> di
     if not tenant_id_str:
         return {"found": False, "message": "No tenant context available"}
 
+    # SECURITY: Prevent PII leakage by only allowing lookups for the active caller's phone number
+    allowed_numbers = [
+        _context.get("from_number") if _context else None,
+        _context.get("to_number") if _context else None,
+    ]
+    if phone_number not in allowed_numbers:
+        logger.warning("unauthorized_customer_lookup_prevented", requested=phone_number)
+        return {"found": False, "message": "Unauthorized: Can only retrieve info for the active caller."}
+
     try:
         tenant_uuid = uuid.UUID(tenant_id_str)
         async with async_session_factory() as session:
@@ -57,6 +66,14 @@ async def create_lead(
 
     if not tenant_id_str:
         return {"created": False, "message": "Missing tenant context"}
+
+    # SECURITY: Enforce caller identity
+    allowed_numbers = [
+        _context.get("from_number") if _context else None,
+        _context.get("to_number") if _context else None,
+    ]
+    if phone_number and phone_number not in allowed_numbers:
+        return {"created": False, "message": "Unauthorized: Can only create lead for active caller."}
 
     try:
         tenant_uuid = uuid.UUID(tenant_id_str)
@@ -111,8 +128,19 @@ async def update_customer(
     try:
         tenant_uuid = uuid.UUID(tenant_id_str)
         c_uuid = uuid.UUID(customer_id)
+        
         async with async_session_factory() as session:
             repo = ContactRepository(session, tenant_id=tenant_uuid)
+            existing = await repo.get_by_id(c_uuid)
+            
+            # SECURITY: Enforce caller identity to prevent IDOR
+            allowed_numbers = [
+                _context.get("from_number") if _context else None,
+                _context.get("to_number") if _context else None,
+            ]
+            if not existing or existing.phone_number not in allowed_numbers:
+                return {"updated": False, "message": "Unauthorized: Can only update active caller's record."}
+                
             await repo.update(c_uuid, **updates)
             await session.commit()
             return {

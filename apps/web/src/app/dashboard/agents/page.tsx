@@ -19,26 +19,9 @@ export default function AgentsPage() {
     try {
       const data = await ApiClient.getAgents()
       setAgents(Array.isArray(data) ? data : data.items || [])
-    } catch (e) {
-      // Demo agent fallback
-      setAgents([
-        {
-          id: '1',
-          name: 'Receptionist AI',
-          description: 'Answers incoming calls, qualifies leads, and schedules appointments.',
-          status: 'published',
-          is_active: true,
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          name: 'Outbound Appointment Reminder',
-          description: 'Calls customers 24h before their booked slot to confirm or reschedule.',
-          status: 'published',
-          is_active: true,
-          created_at: new Date().toISOString(),
-        },
-      ])
+    } catch (e: any) {
+      console.error('Failed to load agents:', e)
+      setAgents([])
     } finally {
       setLoading(false)
     }

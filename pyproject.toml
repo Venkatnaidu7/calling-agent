@@ -43,6 +43,7 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.48b0",
     "opentelemetry-instrumentation-sqlalchemy>=0.48b0",
     "prometheus-client>=0.21.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
     "structlog>=24.4.0",
     "tenacity>=9.0.0",
     "email-validator>=2.2.0",

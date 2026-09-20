@@ -7,63 +7,52 @@ import { ApiClient } from '@/lib/api'
 export default function CallsPage() {
   const [calls, setCalls] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [selectedCall, setSelectedCall] = useState<any>(null)
+  const [transcriptLoading, setTranscriptLoading] = useState(false)
 
   useEffect(() => {
     loadCalls()
   }, [])
 
   async function loadCalls() {
+    setError('')
     try {
       const data = await ApiClient.getCalls()
       setCalls(data.items || [])
-    } catch (e) {
-      setCalls([
-        {
-          id: '1',
-          call_id: 'call_9a8b7c6d',
-          direction: 'inbound',
-          from_number: '+1 (415) 555-0192',
-          to_number: '+1 (800) 555-AI99',
-          status: 'completed',
-          duration_seconds: 142,
-          sentiment: 'positive',
-          summary: 'Caller inquired about pricing for enterprise plan and scheduled a product demonstration for Thursday at 2 PM.',
-          created_at: new Date().toISOString(),
-          transcript: [
-            { speaker: 'agent', text: 'Hello! Thank you for calling VoiceAgent. How can I help you today?' },
-            { speaker: 'customer', text: 'Hi, I was looking at your enterprise plan and had a few questions on concurrency.' },
-            { speaker: 'agent', text: 'Certainly! Our enterprise tier supports up to 20 concurrent voice channels with custom LLM fine-tuning.' },
-          ],
-        },
-        {
-          id: '2',
-          call_id: 'call_5f4e3d2c',
-          direction: 'outbound',
-          from_number: '+1 (800) 555-AI99',
-          to_number: '+1 (212) 555-0144',
-          status: 'completed',
-          duration_seconds: 88,
-          sentiment: 'neutral',
-          summary: 'Outbound reminder for dental cleaning tomorrow at 10 AM. Patient confirmed attendance.',
-          created_at: new Date(Date.now() - 3600000).toISOString(),
-          transcript: [
-            { speaker: 'agent', text: 'Hi Mark, this is the AI assistant calling from Metro Dental to remind you of your appointment tomorrow at 10 AM.' },
-            { speaker: 'customer', text: 'Yes, I will be there. Thank you.' },
-          ],
-        },
-      ])
+    } catch (e: any) {
+      setError(e.message || 'Failed to load call logs')
+      setCalls([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function viewTranscript(call: any) {
+    setSelectedCall({ ...call, transcript: null })
+    setTranscriptLoading(true)
+    try {
+      const transcript = await ApiClient.getCallTranscript(call.call_id || call.id)
+      setSelectedCall({ ...call, transcript: Array.isArray(transcript) ? transcript : transcript.turns || transcript.segments || [] })
+    } catch {
+      setSelectedCall({ ...call, transcript: [] })
+    } finally {
+      setTranscriptLoading(false)
     }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Call History & Transcripts</h2>
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Call History &amp; Transcripts</h2>
         <p className="text-sm text-slate-500">Live call recordings, transcripts, and AI-generated sentiment summaries</p>
       </div>
+
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium">
+          {error}
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
@@ -120,7 +109,7 @@ export default function CallsPage() {
                   </td>
                   <td className="py-4 px-6">
                     <button
-                      onClick={() => setSelectedCall(c)}
+                      onClick={() => viewTranscript(c)}
                       className="px-3 py-1 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition-colors"
                     >
                       View Transcript

@@ -1,3 +1,4 @@
+import asyncio
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
@@ -125,7 +126,8 @@ class BillingService:
 
         try:
             if not customer_id:
-                customer = await stripe.Customer.create_async(
+                customer = await asyncio.to_thread(
+                    stripe.Customer.create,
                     name=tenant.name if tenant else "Tenant",
                     metadata={"tenant_id": str(self.tenant_id)},
                 )
@@ -134,7 +136,8 @@ class BillingService:
                     await self.sub_repo.update(sub.id, stripe_customer_id=customer_id)
                     await self.session.commit()
 
-            checkout = await stripe.checkout.Session.create_async(
+            checkout = await asyncio.to_thread(
+                stripe.checkout.Session.create,
                 customer=customer_id,
                 payment_method_types=["card"],
                 line_items=[
@@ -167,7 +170,8 @@ class BillingService:
             return CustomerPortalResponse(portal_url=return_url)
 
         try:
-            portal = await stripe.billing_portal.Session.create_async(
+            portal = await asyncio.to_thread(
+                stripe.billing_portal.Session.create,
                 customer=sub.stripe_customer_id,
                 return_url=return_url,
             )
