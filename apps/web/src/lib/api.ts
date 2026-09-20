@@ -104,6 +104,32 @@ export class ApiClient {
     return request(`/calls/${encodeURIComponent(callId)}/transcript`)
   }
 
+  static async getCampaigns(params: Record<string, string | number | undefined> = {}): Promise<any> {
+    const query = Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+      .join('&')
+    return request(query ? `/campaigns?${query}` : '/campaigns')
+  }
+
+  static async getCampaign(campaignId: string): Promise<any> {
+    return request(`/campaigns/${encodeURIComponent(campaignId)}`)
+  }
+
+  static async createCampaign(payload: any): Promise<any> {
+    return request('/campaigns', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
+  static async updateCampaign(campaignId: string, payload: any): Promise<any> {
+    return request(`/campaigns/${encodeURIComponent(campaignId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  }
+
   static async getAgents(): Promise<any> {
     return request('/agents')
   }
