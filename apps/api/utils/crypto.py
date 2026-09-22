@@ -6,10 +6,16 @@ from jose import jwt, JWTError
 
 from apps.api.config import settings
 
-# Configure bcrypt with cost factor 12
+# Password hashing configuration.
+# Argon2 is preferred for new passwords; bcrypt remains available for
+# compatibility with existing password hashes.
 pwd_context = CryptContext(
-    schemes=["bcrypt", "argon2", "md5", "sha1", "plaintext"],
-    deprecated=["argon2", "md5", "sha1", "plaintext"],
+    schemes=["argon2", "bcrypt"],
+    deprecated=["bcrypt"],
+    argon2__type="ID",
+    argon2__memory_cost=65536,
+    argon2__time_cost=3,
+    argon2__parallelism=4,
     bcrypt__rounds=12,
 )
 
@@ -19,7 +25,6 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, hash: str) -> bool:
-    # Use constant time comparison inside passlib.verify
     return pwd_context.verify(password, hash)
 
 
