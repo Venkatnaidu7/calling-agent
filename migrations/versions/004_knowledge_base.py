@@ -161,22 +161,22 @@ def upgrade() -> None:
     # Add RLS policies
     op.execute("ALTER TABLE knowledge_bases ENABLE ROW LEVEL SECURITY")
     op.execute(
-        "CREATE POLICY tenant_isolation_policy ON knowledge_bases USING (tenant_id = current_setting("
-        "app.current_tenant_id"
+        "CREATE POLICY tenant_isolation_policy ON knowledge_bases USING (tenant_id = current_setting('
+        "app.current_tenant_id'"
         ", true)::uuid)"
     )
 
     op.execute("ALTER TABLE knowledge_documents ENABLE ROW LEVEL SECURITY")
     op.execute(
-        "CREATE POLICY tenant_isolation_policy ON knowledge_documents USING (tenant_id = current_setting("
-        "app.current_tenant_id"
+        "CREATE POLICY tenant_isolation_policy ON knowledge_documents USING (tenant_id = current_setting('
+        "app.current_tenant_id'"
         ", true)::uuid)"
     )
 
     op.execute("ALTER TABLE knowledge_chunks ENABLE ROW LEVEL SECURITY")
     op.execute(
-        "CREATE POLICY tenant_isolation_policy ON knowledge_chunks USING (tenant_id = current_setting("
-        "app.current_tenant_id"
+        "CREATE POLICY tenant_isolation_policy ON knowledge_chunks USING (tenant_id = current_setting('
+        "app.current_tenant_id'"
         ", true)::uuid)"
     )
 
