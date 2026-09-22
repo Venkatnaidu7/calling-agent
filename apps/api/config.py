@@ -84,7 +84,13 @@ class Settings(BaseSettings):
     def is_development(self) -> bool:
         return self.app_env == "development"
 
-    model_config = {"env_file": ".env", "case_sensitive": False}
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False,
+        # The shared project .env also contains POSTGRES_* and NEXT_PUBLIC_* values
+        # used by Compose and the web app. Ignore settings that are not API fields.
+        "extra": "ignore",
+    }
 
 
 settings = Settings()
