@@ -164,17 +164,18 @@ def upgrade() -> None:
     )
 
     # Updated At Triggers
+    # Reuse the shared trigger function created by migration 001.
     op.execute("""
         CREATE TRIGGER set_timestamp_agents
         BEFORE UPDATE ON agents
         FOR EACH ROW
-        EXECUTE FUNCTION trigger_set_timestamp();
+        EXECUTE FUNCTION update_updated_at_column();
     """)
     op.execute("""
         CREATE TRIGGER set_timestamp_agent_versions
         BEFORE UPDATE ON agent_versions
         FOR EACH ROW
-        EXECUTE FUNCTION trigger_set_timestamp();
+        EXECUTE FUNCTION update_updated_at_column();
     """)
 
 
